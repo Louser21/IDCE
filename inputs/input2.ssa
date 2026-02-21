@@ -1,0 +1,142 @@
+
+;; Function std::basic_ios<char>::rdstate (_ZNKSt9basic_iosIcSt11char_traitsIcEE7rdstateEv, funcdef_no=2483, decl_uid=47064, cgraph_uid=951, symbol_order=988)
+
+iostate std::basic_ios<char>::rdstate (const struct basic_ios * const this)
+{
+  iostate _3;
+
+  <bb 2> :
+  _3 = this_2(D)->D.47182._M_streambuf_state;
+  return _3;
+
+}
+
+
+
+;; Function std::char_traits<char>::length (_ZNSt11char_traitsIcE6lengthEPKc, funcdef_no=143, decl_uid=9255, cgraph_uid=92, symbol_order=101)
+
+size_t std::char_traits<char>::length (const char_type * __s)
+{
+  size_t _3;
+
+  <bb 2> :
+  _3 = __builtin_strlen (__s_2(D));
+  return _3;
+
+}
+
+
+
+;; Function std::operator| (_ZStorSt12_Ios_IostateS_, funcdef_no=1658, decl_uid=40951, cgraph_uid=451, symbol_order=487)
+
+_Ios_Iostate std::operator| (_Ios_Iostate __a, _Ios_Iostate __b)
+{
+  _Ios_Iostate _3;
+
+  <bb 2> :
+  _3 = __a_1(D) | __b_2(D);
+  return _3;
+
+}
+
+
+
+;; Function std::basic_ios<char>::setstate (_ZNSt9basic_iosIcSt11char_traitsIcEE8setstateESt12_Ios_Iostate, funcdef_no=2415, decl_uid=47069, cgraph_uid=883, symbol_order=920)
+
+void std::basic_ios<char>::setstate (struct basic_ios * const this, iostate __state)
+{
+  _Ios_Iostate _1;
+  _Ios_Iostate _2;
+
+  <bb 2> :
+  _1 = std::basic_ios<char>::rdstate (this_4(D));
+  _2 = std::operator| (_1, __state_6(D));
+  std::basic_ios<char>::clear (this_4(D), _2);
+  return;
+
+}
+
+
+
+;; Function std::operator<< <std::char_traits<char> > (_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc, funcdef_no=2313, decl_uid=48163, cgraph_uid=781, symbol_order=818)
+
+struct basic_ostream & std::operator<< <std::char_traits<char> > (struct basic_ostream & __out, const char * __s)
+{
+  int (*) () * _1;
+  int (*) () * _2;
+  long int _3;
+  sizetype _4;
+  struct basic_ios * _5;
+  long unsigned int _6;
+  long int _7;
+  long unsigned int _12;
+  struct basic_ostream & _16;
+
+  <bb 2> :
+  if (__s_9(D) == 0B)
+    goto <bb 3>; [INV]
+  else
+    goto <bb 4>; [INV]
+
+  <bb 3> :
+  _1 = __out_13(D)->_vptr.basic_ostream;
+  _2 = _1 + 18446744073709551592;
+  _3 = MEM[(long int *)_2];
+  _4 = (sizetype) _3;
+  _5 = __out_13(D) + _4;
+  std::basic_ios<char>::setstate (_5, 1);
+  goto <bb 5>; [INV]
+
+  <bb 4> :
+  _12 = std::char_traits<char>::length (__s_9(D));
+  _6 = _12;
+  _7 = (long int) _6;
+  std::__ostream_insert<char, std::char_traits<char> > (__out_13(D), __s_9(D), _7);
+
+  <bb 5> :
+  _16 = __out_13(D);
+  return _16;
+
+}
+
+
+
+;; Function add (_Z3addv, funcdef_no=2057, decl_uid=50632, cgraph_uid=525, symbol_order=562)
+
+double add ()
+{
+  double _1;
+
+  <bb 2> :
+  _1 = 0.0;
+  return _1;
+
+}
+
+
+
+;; Function main (main, funcdef_no=2058, decl_uid=50634, cgraph_uid=526, symbol_order=563)
+
+int main ()
+{
+  int x;
+  int _6;
+
+  <bb 2> :
+  x_2 = 5;
+  if (x_2 > 10)
+    goto <bb 3>; [INV]
+  else
+    goto <bb 4>; [INV]
+
+  <bb 3> :
+  std::operator<< <std::char_traits<char> > (&cout, "Greater than 10");
+
+  <bb 4> :
+  std::operator<< <std::char_traits<char> > (&cout, "Program running");
+  _6 = x_2;
+  return _6;
+
+}
+
+
