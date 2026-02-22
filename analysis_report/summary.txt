@@ -1,54 +1,11 @@
 GIMPLE SSA ANALYSIS REPORT
 ==============================
-Number of functions: 8
-
-Function: iostate std::basic_ios<char>::rdstate (const struct basic_ios * const this)
-  Preamble: 2 stmts
-    Block 2 (4 stmts)
-      Successors: 
-
-Function: size_t std::char_traits<char>::length (const char_type * __s)
-  Preamble: 2 stmts
-    Block 2 (3 stmts)
-      Successors: 
-
-Function:  (_Ios_Iostate __a, _Ios_Iostate __b)
-  Preamble: 2 stmts
-    Block 2 (4 stmts)
-      Successors: 
-
-Function: void std::basic_ios<char>::setstate (struct basic_ios * const this, iostate __state)
-  Preamble: 4 stmts
-    Block 2 (9 stmts)
-      Successors: 
-
-Function: struct basic_ostream & std::operator<< <std::char_traits<char> > (struct basic_ostream & __out, const char * __s)
-  Preamble: 26 stmts
-    Block 2 (7 stmts)
-      Successors: 3 4 3 
-    Block 3 (20 stmts)
-      Successors: 5 4 
-    Block 4 (13 stmts)
-      Successors: 5 
-    Block 5 (3 stmts)
-      Successors: 
-
-Function: double add ()
-  Preamble: 2 stmts
-    Block 2 (3 stmts)
-      Successors: 
-
-Function: float x ()
-  Preamble: 2 stmts
-    Block 2 (4 stmts)
-      Successors: 
+Number of functions: 1
 
 Function: int main ()
-  Preamble: 4 stmts
-    Block 2 (8 stmts)
-      Successors: 3 4 3 
+  Preamble: 0 stmts
+    Block 2 (1 stmts)
+      Successors: 3 
     Block 3 (1 stmts)
-      Successors: 4 
-    Block 4 (4 stmts)
       Successors: 
 

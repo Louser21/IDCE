@@ -9,6 +9,8 @@ namespace fs = std::filesystem;
 
 extern int yyparse();
 
+void applyDCE(ProgramIR& prog);
+
 void export_to_dot(const ProgramIR& prog, const std::string& filepath) {
     std::ofstream out(filepath);
     out << "digraph G {\n";
@@ -50,6 +52,7 @@ int main(int argc, char** argv) {
     std::string projectName = (argc > 1) ? argv[1] : "analysis_report";
     
     if (yyparse() == 0) {
+        applyDCE(program);
         // 1. Create Directory
         if (!fs::exists(projectName)) {
             fs::create_directory(projectName);

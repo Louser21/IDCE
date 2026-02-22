@@ -12,22 +12,12 @@ static int expect_function_sig = 0;
 
 %%
 
-[ \t\r\n]+          { /* skip all whitespace */ }
+[ \t\r\n]+          { /* skip whitespace */ }
 
 ";; Function".* { 
     expect_function_sig = 1; 
     yylval.str = strdup(yytext); 
     return FUNCTION_HEADER; 
-}
-
-[a-zA-Z0-9_:*&<> ]+[ \t]*\([^)\n]*\)[ \t]* { 
-    if (expect_function_sig) {
-        expect_function_sig = 0;
-        yylval.str = strdup(yytext);
-        return FUNCTION_SIG;
-    }
-    yylval.str = strdup(yytext);
-    return TEXT_LINE;
 }
 
 "{"                 { return LBRACE; }
@@ -45,14 +35,23 @@ static int expect_function_sig = 0;
     return GOTO_STMT;
 }
 
-"return"[^\n]* { yylval.str = strdup(yytext); return RETURN_STMT; }
+"return"[^\n]*";"   { yylval.str = strdup(yytext); return RETURN_STMT; }
 
-"<L"[0-9]+">:"      { /* ignore labels */ }
+[a-zA-Z0-9_._:*&<> ]+[ ]*=[^;\n]*";" {
+    yylval.str = strdup(yytext);
+    return TEXT_LINE;
+}
 
-[a-zA-Z0-9_.]+      { yylval.str = strdup(yytext); return TEXT_LINE; }
+[a-zA-Z0-9_:*&<> ]+[ \t]*\([^)\n]*\)[ \t]* { 
+    if (expect_function_sig) {
+        expect_function_sig = 0;
+        yylval.str = strdup(yytext);
+        return FUNCTION_SIG;
+    }
+    yylval.str = strdup(yytext);
+    return TEXT_LINE;
+}
 
-[=;()<>,*&]         { /* ignore punctuation */ }
-
-.                   { /* ignore anything else */ }
+.                   { /* ignore punctuation */ }
 
 %%

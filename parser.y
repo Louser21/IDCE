@@ -17,9 +17,23 @@ int stmt_counter = 0;
 int current_block_idx = -1;
 
 StmtType classify_statement(const std::string& text) {
-    if (text.find('=') != std::string::npos) return STMT_ASSIGN;
-    if (text.find("operator<<") != std::string::npos) return STMT_CALL;
-    if (text.find("if ") != std::string::npos) return STMT_COND;
+    // 1. Check for Assignment (Pure or Call-based)
+    if (text.find('=') != std::string::npos) {
+        // If it contains '(', it's a function call result assignment, treat as CALL (Live)
+        if (text.find('(') != std::string::npos) return STMT_CALL; 
+        
+        // Pure SSA assignment (e.g., x_2 = 5;)
+        return STMT_ASSIGN;
+    }
+    
+    // 2. Control Flow & Side Effects
+    if (text.find("return") != std::string::npos) return STMT_RETURN;
+    if (text.find("goto") != std::string::npos) return STMT_GOTO;
+    if (text.find("if") != std::string::npos) return STMT_COND;
+    
+    // 3. Fallback for pure function calls without '='
+    if (text.find('(') != std::string::npos) return STMT_CALL;
+
     return STMT_OTHER;
 }
 %}

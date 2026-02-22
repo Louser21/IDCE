@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include<set>
 
 enum StmtType {
     STMT_ASSIGN,
@@ -36,5 +37,9 @@ struct ProgramIR {
 };
 
 extern ProgramIR program;
+
+void applyDCE(ProgramIR& prog); 
+std::string extractLHS(const std::string& text);
+std::set<std::string> extractRHS(const std::string& text);
 
 #endif

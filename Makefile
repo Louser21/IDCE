@@ -1,7 +1,7 @@
 all: idce
 
-idce: lex.yy.c parser.tab.c main.cpp ir.h
-	g++ -g -o idce main.cpp parser.tab.c lex.yy.c -I.
+idce: lex.yy.c parser.tab.c main.cpp analysis.cpp
+	g++ -std=c++17 -o idce lex.yy.c parser.tab.c main.cpp analysis.cpp -lfl
 
 lex.yy.c: lexer.l parser.tab.h
 	flex lexer.l
