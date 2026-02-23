@@ -1,0 +1,39 @@
+
+;; Function add (_Z3addv, funcdef_no=1988, decl_uid=49708, cgraph_uid=456, symbol_order=493)
+
+float add ()
+{
+  float D.53797;
+  float _1;
+
+  <bb 2> :
+  _1 = 1.0e+0;
+
+  <bb 3> :
+<L0>:
+  return _1;
+
+}
+
+
+
+;; Function main (main, funcdef_no=1989, decl_uid=49710, cgraph_uid=457, symbol_order=494)
+
+int main ()
+{
+  int cnt;
+  int D.53799;
+  int _3;
+
+  <bb 2> :
+  cnt_1 = 0;
+  cnt_2 = cnt_1 + 1;
+  _3 = 0;
+
+  <bb 3> :
+<L0>:
+  return _3;
+
+}
+
+

@@ -1,0 +1,280 @@
+Grammar
+
+    0 $accept: program $end
+
+    1 program: noise functions
+
+    2 noise: ε
+    3      | noise TEXT_LINE
+    4      | noise FUNCTION_SIG
+
+    5 functions: function
+    6          | functions function
+
+    7 optional_lines: ε
+    8               | optional_lines TEXT_LINE
+
+    9 $@1: ε
+
+   10 $@2: ε
+
+   11 function: FUNCTION_HEADER $@1 optional_lines FUNCTION_SIG $@2 optional_lines LBRACE function_items RBRACE
+
+   12 function_items: ε
+   13               | function_items function_item
+
+   14 function_item: TEXT_LINE
+   15              | BLOCK_HEADER
+   16              | RETURN_STMT
+   17              | GOTO_STMT
+
+
+Terminals, with rules where they appear
+
+    $end (0) 0
+    error (256)
+    FUNCTION_HEADER <str> (258) 11
+    FUNCTION_SIG <str> (259) 4 11
+    LBRACE (260) 11
+    RBRACE (261) 11
+    BLOCK_HEADER <num> (262) 15
+    GOTO_STMT <num> (263) 17
+    RETURN_STMT <str> (264) 16
+    TEXT_LINE <str> (265) 3 8 14
+
+
+Nonterminals, with rules where they appear
+
+    $accept (11)
+        on left: 0
+    program (12)
+        on left: 1
+        on right: 0
+    noise (13)
+        on left: 2 3 4
+        on right: 1 3 4
+    functions (14)
+        on left: 5 6
+        on right: 1 6
+    optional_lines (15)
+        on left: 7 8
+        on right: 8 11
+    function (16)
+        on left: 11
+        on right: 5 6
+    $@1 (17)
+        on left: 9
+        on right: 11
+    $@2 (18)
+        on left: 10
+        on right: 11
+    function_items (19)
+        on left: 12 13
+        on right: 11 13
+    function_item (20)
+        on left: 14 15 16 17
+        on right: 13
+
+
+State 0
+
+    0 $accept: • program $end
+
+    $default  reduce using rule 2 (noise)
+
+    program  go to state 1
+    noise    go to state 2
+
+
+State 1
+
+    0 $accept: program • $end
+
+    $end  shift, and go to state 3
+
+
+State 2
+
+    1 program: noise • functions
+    3 noise: noise • TEXT_LINE
+    4      | noise • FUNCTION_SIG
+
+    FUNCTION_HEADER  shift, and go to state 4
+    FUNCTION_SIG     shift, and go to state 5
+    TEXT_LINE        shift, and go to state 6
+
+    functions  go to state 7
+    function   go to state 8
+
+
+State 3
+
+    0 $accept: program $end •
+
+    $default  accept
+
+
+State 4
+
+   11 function: FUNCTION_HEADER • $@1 optional_lines FUNCTION_SIG $@2 optional_lines LBRACE function_items RBRACE
+
+    $default  reduce using rule 9 ($@1)
+
+    $@1  go to state 9
+
+
+State 5
+
+    4 noise: noise FUNCTION_SIG •
+
+    $default  reduce using rule 4 (noise)
+
+
+State 6
+
+    3 noise: noise TEXT_LINE •
+
+    $default  reduce using rule 3 (noise)
+
+
+State 7
+
+    1 program: noise functions •
+    6 functions: functions • function
+
+    FUNCTION_HEADER  shift, and go to state 4
+
+    $default  reduce using rule 1 (program)
+
+    function  go to state 10
+
+
+State 8
+
+    5 functions: function •
+
+    $default  reduce using rule 5 (functions)
+
+
+State 9
+
+   11 function: FUNCTION_HEADER $@1 • optional_lines FUNCTION_SIG $@2 optional_lines LBRACE function_items RBRACE
+
+    $default  reduce using rule 7 (optional_lines)
+
+    optional_lines  go to state 11
+
+
+State 10
+
+    6 functions: functions function •
+
+    $default  reduce using rule 6 (functions)
+
+
+State 11
+
+    8 optional_lines: optional_lines • TEXT_LINE
+   11 function: FUNCTION_HEADER $@1 optional_lines • FUNCTION_SIG $@2 optional_lines LBRACE function_items RBRACE
+
+    FUNCTION_SIG  shift, and go to state 12
+    TEXT_LINE     shift, and go to state 13
+
+
+State 12
+
+   11 function: FUNCTION_HEADER $@1 optional_lines FUNCTION_SIG • $@2 optional_lines LBRACE function_items RBRACE
+
+    $default  reduce using rule 10 ($@2)
+
+    $@2  go to state 14
+
+
+State 13
+
+    8 optional_lines: optional_lines TEXT_LINE •
+
+    $default  reduce using rule 8 (optional_lines)
+
+
+State 14
+
+   11 function: FUNCTION_HEADER $@1 optional_lines FUNCTION_SIG $@2 • optional_lines LBRACE function_items RBRACE
+
+    $default  reduce using rule 7 (optional_lines)
+
+    optional_lines  go to state 15
+
+
+State 15
+
+    8 optional_lines: optional_lines • TEXT_LINE
+   11 function: FUNCTION_HEADER $@1 optional_lines FUNCTION_SIG $@2 optional_lines • LBRACE function_items RBRACE
+
+    LBRACE     shift, and go to state 16
+    TEXT_LINE  shift, and go to state 13
+
+
+State 16
+
+   11 function: FUNCTION_HEADER $@1 optional_lines FUNCTION_SIG $@2 optional_lines LBRACE • function_items RBRACE
+
+    $default  reduce using rule 12 (function_items)
+
+    function_items  go to state 17
+
+
+State 17
+
+   11 function: FUNCTION_HEADER $@1 optional_lines FUNCTION_SIG $@2 optional_lines LBRACE function_items • RBRACE
+   13 function_items: function_items • function_item
+
+    RBRACE        shift, and go to state 18
+    BLOCK_HEADER  shift, and go to state 19
+    GOTO_STMT     shift, and go to state 20
+    RETURN_STMT   shift, and go to state 21
+    TEXT_LINE     shift, and go to state 22
+
+    function_item  go to state 23
+
+
+State 18
+
+   11 function: FUNCTION_HEADER $@1 optional_lines FUNCTION_SIG $@2 optional_lines LBRACE function_items RBRACE •
+
+    $default  reduce using rule 11 (function)
+
+
+State 19
+
+   15 function_item: BLOCK_HEADER •
+
+    $default  reduce using rule 15 (function_item)
+
+
+State 20
+
+   17 function_item: GOTO_STMT •
+
+    $default  reduce using rule 17 (function_item)
+
+
+State 21
+
+   16 function_item: RETURN_STMT •
+
+    $default  reduce using rule 16 (function_item)
+
+
+State 22
+
+   14 function_item: TEXT_LINE •
+
+    $default  reduce using rule 14 (function_item)
+
+
+State 23
+
+   13 function_items: function_items function_item •
+
+    $default  reduce using rule 13 (function_items)

@@ -3,7 +3,7 @@
 
 #include <string>
 #include <vector>
-#include<set>
+#include <set>
 
 enum StmtType {
     STMT_ASSIGN,
@@ -38,8 +38,27 @@ struct ProgramIR {
 
 extern ProgramIR program;
 
-void applyDCE(ProgramIR& prog); 
+// --- Optimization Pass Declarations ---
+
+/**
+ * applyGlobalDCE: The main entry point for Week 7 Core Logic.
+ * Performs: removeUnusedFunctions -> applyConstantFolding -> removeUnreachableBlocks -> applyLocalDCE.
+ */
+void applyGlobalDCE(ProgramIR& prog);
+
+/**
+ * applyDCE: Performs variable liveness analysis (Mark-and-Sweep) on a program.
+ */
+void applyDCE(ProgramIR& prog);
+
+/**
+ * applyLocalDCE: Optimized per-function pass that integrates logic folding and liveness.
+ */
+void applyLocalDCE(FunctionIR& func);
+
+// --- Helper Declarations ---
 std::string extractLHS(const std::string& text);
 std::set<std::string> extractRHS(const std::string& text);
+std::string sanitizeVar(std::string var);
 
 #endif

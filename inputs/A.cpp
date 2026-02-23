@@ -1,5 +1,9 @@
 #include <iostream>
 
+float add(){
+    return 1;
+}
+
 int main()
 {
     int cnt = 0;
