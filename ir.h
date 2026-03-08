@@ -46,6 +46,8 @@ extern ProgramIR program;
  */
 void applyGlobalDCE(ProgramIR& prog);
 
+bool hasSideEffect(const Statement& stmt);
+
 /**
  * applyDCE: Performs variable liveness analysis (Mark-and-Sweep) on a program.
  */
@@ -60,5 +62,10 @@ void applyLocalDCE(FunctionIR& func);
 std::string extractLHS(const std::string& text);
 std::set<std::string> extractRHS(const std::string& text);
 std::string sanitizeVar(std::string var);
+
+/**
+ * applyIntelligentDCE: ML Guided pass
+ */
+void applyIntelligentDCE(ProgramIR& prog, const std::set<int>& dead_ids);
 
 #endif

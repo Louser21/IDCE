@@ -10,6 +10,8 @@ namespace fs = std::filesystem;
 extern int yyparse();
 // Ensure the Global DCE function is declared
 void applyGlobalDCE(ProgramIR& prog);
+// Declare ML Feature Extractor
+void exportIRFeaturesToJSON(const ProgramIR& prog, const std::string& out_path);
 
 void export_to_dot(const ProgramIR& prog, const std::string& filepath) {
     std::ofstream out(filepath);
@@ -49,13 +51,68 @@ void export_to_dot(const ProgramIR& prog, const std::string& filepath) {
 }
 
 int main(int argc, char** argv) {
-    // Set folder name: use first argument if provided, else default
-    std::string projectName = (argc > 1) ? argv[1] : "analysis_report";
+    // Basic argument parsing
+    bool ml_extract = false;
+    bool ml_dce = false;
+    std::string projectName = "analysis_report";
+    
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "--ml-extract") ml_extract = true;
+        else if (arg == "--ml-dce") ml_dce = true;
+        else if (arg.find("--") == std::string::npos) projectName = arg; // Use as folder name
+    }
     
     if (yyparse() == 0) {
-        // CHANGED: Use the full global pipeline for Week 7
-        // This handles Global Function Pruning -> Constant Folding -> Liveness -> Structural Cleanup
-        applyGlobalDCE(program);
+        // If ML extraction is requested, we dump BEFORE running Classical DCE
+        if (ml_extract) {
+            if (!fs::exists(projectName)) fs::create_directory(projectName);
+            exportIRFeaturesToJSON(program, projectName + "/ir_graph_features.json");
+        }
+
+        if (ml_dce && !ml_extract) {
+            std::cout << "[ML Pipeline] Starting ML Inference DCE Pass...\n";
+            if (!fs::exists(projectName)) fs::create_directory(projectName);
+            std::string tmp_graph = projectName + "/tmp_ir_graph.json";
+            std::string tmp_out = projectName + "/tmp_ml_preds.json";
+            
+            exportIRFeaturesToJSON(program, tmp_graph);
+            std::string cmd = ". ml/.venv/bin/activate && python3 ml/inference.py " + tmp_graph + " ml_data/dce_model.pt > " + tmp_out;
+            int ret = std::system(cmd.c_str());
+            
+            if (ret != 0) {
+                std::cerr << "[ML Error] Inference script failed.\n";
+            } else {
+                std::ifstream ifs(tmp_out);
+                std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
+                std::set<int> dead_ids;
+                size_t p = content.find('[');
+                if (p != std::string::npos) {
+                    p++;
+                    while (p < content.size() && content[p] != ']') {
+                        if (isdigit(content[p])) {
+                            size_t end;
+                            int id = std::stoi(content.substr(p), &end);
+                            dead_ids.insert(id);
+                            p += end;
+                        } else {
+                            p++;
+                        }
+                    }
+                }
+                applyIntelligentDCE(program, dead_ids);
+                std::cout << "[ML Pipeline] Inference complete. Evaluated " << dead_ids.size() << " predicted dead instructions.\n";
+            }
+        } else {
+            // Apply Classical DCE
+            applyGlobalDCE(program);
+        }
+
+        // Dump POST-Optimization graph to use as Ground Truth for labels
+        if (ml_extract) {
+            exportIRFeaturesToJSON(program, projectName + "/ir_graph_optimized.json");
+            return 0; // Short circuit for dataset gen
+        }
 
         // 1. Create Directory
         if (!fs::exists(projectName)) {

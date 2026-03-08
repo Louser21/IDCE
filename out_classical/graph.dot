@@ -1,0 +1,16 @@
+digraph G {
+  node [shape=box, fontname="Courier", style=filled, fillcolor=white];
+  compound=true;
+  subgraph "cluster_1" {
+    label = "int main ()";
+    style = dashed; color = blue;
+    node_1_2 [label="BB 2\nx_2 = 1;\nif (x_2 == 0)\ngoto <bb 3>;\ngoto <bb 4>;\n"];
+    node_1_2 -> node_1_3;
+    node_1_2 -> node_1_4;
+    node_1_3 [label="BB 3\nstd::operator<< <std::char_traits<char> > (&cout, \"This block is unreachable logic\")\n"];
+    node_1_3 -> node_1_4;
+    node_1_4 [label="BB 4\n"];
+    node_1_4 -> node_1_5;
+    node_1_5 [label="BB 5\nreturn _5;\n"];
+  }
+}

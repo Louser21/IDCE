@@ -1,0 +1,61 @@
+{
+  "functions": [
+    {
+      "name": "int main ()",
+      "nodes": [
+        {
+          "id": 0,
+          "block_id": 2,
+          "text": "x_2 = 1;",
+          "features": [1, 0]
+        },
+        {
+          "id": 1,
+          "block_id": 2,
+          "text": "if (x_2 == 0)",
+          "features": [2, 0]
+        },
+        {
+          "id": 2,
+          "block_id": 2,
+          "text": "goto <bb 3>;",
+          "features": [3, 0]
+        },
+        {
+          "id": 3,
+          "block_id": 2,
+          "text": "goto <bb 4>;",
+          "features": [3, 0]
+        },
+        {
+          "id": 4,
+          "block_id": 3,
+          "text": "std::operator<< <std::char_traits<char> > (&cout, \"This block is unreachable logic\")",
+          "features": [2, 0]
+        },
+        {
+          "id": 5,
+          "block_id": 4,
+          "text": "_5 = 0;",
+          "features": [1, 0]
+        },
+        {
+          "id": 6,
+          "block_id": 5,
+          "text": "return _5;",
+          "features": [5, 0]
+        }
+      ],
+      "edges": [
+        {"source": 0, "target": 1, "type": "CFG"},
+        {"source": 1, "target": 2, "type": "CFG"},
+        {"source": 2, "target": 3, "type": "CFG"},
+        {"source": 3, "target": 4, "type": "CFG_BRANCH"},
+        {"source": 3, "target": 5, "type": "CFG_BRANCH"},
+        {"source": 4, "target": 5, "type": "CFG_BRANCH"},
+        {"source": 5, "target": 6, "type": "CFG_BRANCH"},
+        {"source": 5, "target": 6, "type": "DFG"}
+      ]
+    }
+  ]
+}

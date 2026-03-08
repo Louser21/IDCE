@@ -1,7 +1,7 @@
 all: idce
 
-idce: lex.yy.c parser.tab.c main.cpp analysis.cpp
-	g++ -std=c++17 -o idce lex.yy.c parser.tab.c main.cpp analysis.cpp -lfl
+idce: lex.yy.c parser.tab.c main.cpp analysis.cpp ml/feature_extractor.cpp
+	g++ -std=c++17 -o idce lex.yy.c parser.tab.c main.cpp analysis.cpp ml/feature_extractor.cpp -lfl
 
 lex.yy.c: lexer.l parser.tab.h
 	flex lexer.l

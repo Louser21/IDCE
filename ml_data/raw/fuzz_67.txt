@@ -1,0 +1,140 @@
+;; Function main (main)
+
+main () {
+    int v_1;
+    int v_2;
+    int v_3;
+    int v_4;
+    int v_5;
+  <bb 1>:
+    v_6 = v_6 / 71;
+    v_7 = 54;
+    v_8 = v_7;
+    v_9 = 52;
+    if (v_5 == 22) goto <bb 2>;
+    goto <bb 2>;
+  <bb 2>:
+    v_10 = 92;
+    v_11 = 20;
+    v_12 = 90;
+    v_13 = v_13;
+    compute(v_9);
+    v_14 = v_3;
+    v_15 = 74;
+    v_16 = v_1 - 12;
+    if (v_8 > 55) goto <bb 1>;
+    goto <bb 3>;
+  <bb 3>:
+    v_17 = 42;
+    v_18 = v_3;
+    v_19 = v_18 + 29;
+    v_20 = v_17;
+    v_21 = v_19 + v_15;
+    printf(v_12);
+    if (v_2 == 96) goto <bb 4>;
+    goto <bb 4>;
+  <bb 4>:
+    v_22 = 28;
+    v_23 = 95;
+    v_24 = 15;
+    if (v_23 == 8) goto <bb 1>;
+    goto <bb 5>;
+  <bb 5>:
+    v_25 = v_19;
+    helper(v_6);
+    v_26 = v_16;
+    v_27 = v_19 - 89;
+    v_28 = 15;
+    v_29 = v_21 / v_27;
+    v_30 = 27;
+    v_31 = 77;
+    return v_24;
+}
+
+;; Function func_0 (func_0)
+
+func_0 () {
+    int v_1;
+    int v_2;
+    int v_3;
+    int v_4;
+    int v_5;
+  <bb 1>:
+    v_6 = v_4 + v_6;
+    v_7 = v_7 - 51;
+    v_8 = v_3;
+    v_9 = 21;
+    v_10 = v_10;
+    v_11 = 15;
+    v_12 = 41;
+    v_13 = v_2 * 92;
+    v_14 = 46;
+    if (v_6 < 6) goto <bb 3>;
+    goto <bb 2>;
+  <bb 2>:
+    v_15 = v_1 / v_14;
+    v_16 = 79;
+    v_17 = v_13;
+    v_18 = v_17 * 84;
+    if (v_9 != 0) goto <bb 2>;
+    goto <bb 3>;
+  <bb 3>:
+    v_19 = 31;
+    v_20 = 44;
+    v_21 = v_10 - 96;
+    if (v_21 != 12) goto <bb 2>;
+    goto <bb 4>;
+  <bb 4>:
+    v_22 = v_22;
+    v_23 = 2;
+    v_24 = v_12 * 70;
+    if (v_22 > 79) goto <bb 5>;
+    goto <bb 5>;
+  <bb 5>:
+    printf(v_10);
+    v_25 = v_8 - v_10;
+    v_26 = 88;
+    v_27 = v_19;
+    v_28 = v_25 * 36;
+    if (v_7 > 21) goto <bb 4>;
+    goto <bb 6>;
+  <bb 6>:
+    v_29 = v_17 / v_29;
+    v_30 = v_3 + 79;
+    v_31 = 51;
+    return v_12;
+}
+
+;; Function func_1 (func_1)
+
+func_1 () {
+    int v_1;
+    int v_2;
+    int v_3;
+    int v_4;
+    int v_5;
+  <bb 1>:
+    v_6 = 0;
+    v_7 = v_3;
+    v_8 = v_4;
+    v_9 = v_4 + v_1;
+    v_10 = v_7 - v_5;
+    if (v_4 < 28) goto <bb 1>;
+    goto <bb 2>;
+  <bb 2>:
+    v_11 = v_8 - v_6;
+    v_12 = v_6 + 32;
+    v_13 = v_13;
+    v_14 = 19;
+    if (v_10 != 62) goto <bb 1>;
+    goto <bb 3>;
+  <bb 3>:
+    v_15 = v_6 + v_9;
+    v_16 = v_4;
+    v_17 = 32;
+    v_18 = v_4 - v_17;
+    v_19 = v_1;
+    v_20 = v_12 * v_3;
+    return v_1;
+}
+

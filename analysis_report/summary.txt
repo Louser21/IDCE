@@ -4,8 +4,12 @@ Final number of reachable functions: 1
 
 Function: int main ()
   Preamble: 0 declarations remaining
-    Block 2 (1 live stmts)
-      Successors: 3 
+    Block 2 (3 live stmts)
+      Successors: 3 4 
     Block 3 (1 live stmts)
+      Successors: 4 
+    Block 4 (1 live stmts)
+      Successors: 5 
+    Block 5 (1 live stmts)
       Successors: 
 

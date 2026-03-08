@@ -1,0 +1,184 @@
+;; Function main (main)
+
+main () {
+    int v_1;
+    int v_2;
+    int v_3;
+    int v_4;
+    int v_5;
+  <bb 1>:
+    v_6 = 63;
+    v_7 = v_3;
+    v_8 = v_1;
+    v_9 = 39;
+    v_10 = v_5;
+    v_11 = 37;
+    v_12 = v_12 / 60;
+    helper(v_2);
+    malloc(v_5);
+    printf(v_8);
+    if (v_12 != 37) goto <bb 2>;
+    goto <bb 2>;
+  <bb 2>:
+    v_13 = v_2;
+    v_14 = v_6;
+    v_15 = v_7 / 16;
+    v_16 = v_13 + v_1;
+    v_17 = 53;
+    if (v_14 > 69) goto <bb 1>;
+    goto <bb 3>;
+  <bb 3>:
+    malloc(v_5);
+    v_18 = 37;
+    v_19 = 84;
+    v_20 = 1;
+    v_21 = v_3;
+    v_22 = 42;
+    v_23 = 34;
+    v_24 = 89;
+    v_25 = 59;
+    v_26 = v_1 - v_19;
+    v_27 = 4;
+    if (v_16 < 86) goto <bb 4>;
+    goto <bb 4>;
+  <bb 4>:
+    v_28 = 54;
+    v_29 = 98;
+    v_30 = 75;
+    v_31 = v_28 - v_18;
+    v_32 = v_6;
+    v_33 = v_4;
+    v_34 = 18;
+    printf(v_30);
+    compute(v_7);
+    v_35 = 77;
+    if (v_12 > 24) goto <bb 5>;
+    goto <bb 5>;
+  <bb 5>:
+    v_36 = 15;
+    v_37 = 31;
+    v_38 = v_15;
+    v_39 = 70;
+    v_40 = v_5;
+    v_41 = v_14 / 2;
+    return v_26;
+}
+
+;; Function func_0 (func_0)
+
+func_0 () {
+    int v_1;
+    int v_2;
+    int v_3;
+    int v_4;
+    int v_5;
+  <bb 1>:
+    v_6 = v_3 - v_4;
+    compute(v_5);
+    compute(v_3);
+    v_7 = 18;
+    v_8 = v_1;
+    helper(v_7);
+    v_9 = 46;
+    v_10 = v_2;
+    if (v_8 == 67) goto <bb 3>;
+    goto <bb 2>;
+  <bb 2>:
+    v_11 = v_1 + v_10;
+    v_12 = 72;
+    v_13 = 6;
+    v_14 = 0;
+    v_15 = v_5 * v_9;
+    v_16 = v_2;
+    malloc(v_11);
+    v_17 = 55;
+    if (v_6 < 14) goto <bb 2>;
+    goto <bb 3>;
+  <bb 3>:
+    v_18 = 77;
+    v_19 = v_6 / 94;
+    v_20 = 90;
+    v_21 = 27;
+    v_22 = v_20 * v_3;
+    v_23 = v_4 / v_23;
+    v_24 = 79;
+    v_25 = v_17;
+    return v_23;
+}
+
+;; Function func_1 (func_1)
+
+func_1 () {
+    int v_1;
+    int v_2;
+    int v_3;
+    int v_4;
+    int v_5;
+  <bb 1>:
+    v_6 = v_2 - v_2;
+    v_7 = v_6 - 76;
+    v_8 = 0;
+    v_9 = 7;
+    if (v_2 != 10) goto <bb 2>;
+    goto <bb 2>;
+  <bb 2>:
+    helper(v_4);
+    v_10 = v_4;
+    v_11 = 49;
+    v_12 = v_5;
+    v_13 = v_11 / 40;
+    v_14 = 13;
+    v_15 = v_12 - v_12;
+    v_16 = v_4;
+    if (v_9 < 0) goto <bb 1>;
+    goto <bb 3>;
+  <bb 3>:
+    v_17 = v_9;
+    v_18 = 40;
+    v_19 = v_18;
+    v_20 = v_11;
+    v_21 = v_15;
+    v_22 = v_14;
+    v_23 = 53;
+    if (v_17 == 39) goto <bb 5>;
+    goto <bb 4>;
+  <bb 4>:
+    v_24 = v_3 / v_24;
+    v_25 = 40;
+    v_26 = v_1;
+    malloc(v_3);
+    v_27 = v_4 / v_18;
+    v_28 = 1;
+    compute(v_17);
+    v_29 = v_9 + 26;
+    v_30 = v_6 - v_19;
+    v_31 = v_28 / v_8;
+    v_32 = 13;
+    v_33 = v_5 / 87;
+    if (v_2 != 6) goto <bb 3>;
+    goto <bb 5>;
+  <bb 5>:
+    v_34 = v_24 - 22;
+    v_35 = v_10 * v_7;
+    v_36 = 1;
+    if (v_2 != 28) goto <bb 4>;
+    goto <bb 6>;
+  <bb 6>:
+    v_37 = v_24 - 16;
+    v_38 = v_2 + 88;
+    helper(v_28);
+    v_39 = v_14;
+    v_40 = v_20 / v_30;
+    v_41 = 86;
+    v_42 = v_39 / v_25;
+    if (v_36 > 8) goto <bb 6>;
+    goto <bb 7>;
+  <bb 7>:
+    v_43 = 39;
+    v_44 = 48;
+    v_45 = 97;
+    v_46 = v_10;
+    v_47 = 36;
+    return v_20;
+}
+

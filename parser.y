@@ -70,6 +70,7 @@ functions
 optional_lines
     : /* empty */
     | optional_lines TEXT_LINE { free($2); }
+    | optional_lines RETURN_STMT { free($2); }
     ;
 
 function

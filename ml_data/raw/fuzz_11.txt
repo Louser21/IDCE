@@ -1,0 +1,33 @@
+;; Function main (main)
+
+main () {
+    int v_1;
+    int v_2;
+    int v_3;
+    int v_4;
+    int v_5;
+  <bb 1>:
+    v_6 = v_5 - v_6;
+    v_7 = v_5;
+    v_8 = v_6 + v_2;
+    if (v_1 == 15) goto <bb 1>;
+    goto <bb 2>;
+  <bb 2>:
+    v_9 = v_4 - 2;
+    v_10 = v_7;
+    v_11 = v_5 - v_2;
+    v_12 = v_9 / 61;
+    v_13 = v_2 + 50;
+    v_14 = 55;
+    v_15 = v_8;
+    v_16 = v_15;
+    v_17 = 49;
+    if (v_2 == 8) goto <bb 1>;
+    goto <bb 3>;
+  <bb 3>:
+    v_18 = v_10 - v_4;
+    v_19 = 9;
+    v_20 = v_9;
+    return v_14;
+}
+

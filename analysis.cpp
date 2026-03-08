@@ -14,6 +14,22 @@ std::string sanitizeVar(std::string var) {
     return var;
 }
 
+// Check if a statement contains a side effect (e.g., IO, memory alloc, volatile)
+bool hasSideEffect(const Statement& stmt) {
+    if (stmt.type == STMT_CALL) {
+        // Core C side effects / IO
+        std::regex sys_call(R"(\b(printf|scanf|malloc|free|fopen|fclose|fwrite|fread|sys_.*)\b)");
+        if (std::regex_search(stmt.text, sys_call)) return true;
+    }
+    // Check for pointer dereference assignment acting as side effect
+    if (stmt.text.find("*") != std::string::npos && stmt.text.find("=") != std::string::npos) {
+        // Basic heuristic: if assigning to a deref, it's a side-effect
+        std::string lhs = extractLHS(stmt.text);
+        if (lhs.find("*") != std::string::npos) return true;
+    }
+    return false;
+}
+
 // Helper: Extract LHS variable for statement analysis
 std::string extractLHS(const std::string &text) {
     std::regex lhs_regex(R"(([a-zA-Z0-9_._]*)\s*=)");
@@ -44,39 +60,99 @@ std::set<std::string> extractRHS(const std::string &text) {
     return uses;
 }
 
-// Phase A: Constant Folding to track and mask unreachable conditions
+// Phase A: Sparse Conditional Constant Propagation (SCCP) Implementation
 void applyConstantFolding(FunctionIR &func) {
     std::map<std::string, int> constants;
+    std::set<int> executable_edges;
+    bool changed = true;
+
     std::regex const_assign_regex(R"(([a-zA-Z0-9_._]+)\s*=\s*([0-9]+))");
-    std::regex if_cond_regex(R"(if\s*\((.+)\s*([<>!=]+)\s*([0-9]+)\))");
+    std::regex var_assign_regex(R"(([a-zA-Z0-9_._]+)\s*=\s*([a-zA-Z0-9_._]+))");
+    std::regex math_op_regex(R"(([a-zA-Z0-9_._]+)\s*=\s*([a-zA-Z0-9_._]+)\s*([\+\-\*\/])\s*([a-zA-Z0-9_._]+))");
+    std::regex if_cond_regex(R"(if\s*\((.+)\s*([<>!=]+)\s*([0-9a-zA-Z_._]+)\))");
 
-    for (auto &block : func.blocks) {
-        for (auto &stmt : block.statements) {
-            std::smatch match;
-            if (std::regex_search(stmt.text, match, const_assign_regex)) {
-                std::string var = sanitizeVar(match[1].str());
-                constants[var] = std::stoi(match[2].str());
-                std::cout << "[DCE Debug] Tracked constant: [" << var << "] = " << constants[var] << "\n";
-            }
+    while (changed) {
+        changed = false;
+        for (auto &block : func.blocks) {
+            for (auto &stmt : block.statements) {
+                if (stmt.text.find("// Folded") != std::string::npos) continue;
 
-            if (stmt.type == STMT_COND && std::regex_search(stmt.text, match, if_cond_regex)) {
-                std::string var = sanitizeVar(match[1].str());
-                std::string op = match[2].str();
-                int threshold = std::stoi(match[3].str());
+                std::smatch match;
+                // Rule 1: Literal Assignment
+                if (std::regex_search(stmt.text, match, const_assign_regex)) {
+                    std::string var = sanitizeVar(match[1].str());
+                    int val = std::stoi(match[2].str());
+                    if (constants.find(var) == constants.end() || constants[var] != val) {
+                        constants[var] = val;
+                        changed = true;
+                    }
+                }
+                // Rule 2: Constant Variable propagation (y = x)
+                else if (std::regex_search(stmt.text, match, var_assign_regex) && stmt.text.find("+") == std::string::npos && stmt.text.find("-") == std::string::npos) {
+                    std::string var = sanitizeVar(match[1].str());
+                    std::string src = sanitizeVar(match[2].str());
+                    if (constants.count(src) && (!constants.count(var) || constants[var] != constants[src])) {
+                        constants[var] = constants[src];
+                        changed = true;
+                    }
+                }
+                // Rule 3: Math Evaluation (Simplified)
+                else if (std::regex_search(stmt.text, match, math_op_regex)) {
+                    std::string var = sanitizeVar(match[1].str());
+                    std::string op1 = sanitizeVar(match[2].str());
+                    std::string oper = match[3].str();
+                    std::string op2 = sanitizeVar(match[4].str());
 
-                if (constants.count(var)) {
-                    int actual_val = constants[var];
-                    bool is_true = false;
-                    if (op == "==") is_true = (actual_val == threshold);
-                    else if (op == "!=") is_true = (actual_val != threshold);
-                    else if (op == ">")  is_true = (actual_val > threshold);
-                    else if (op == "<")  is_true = (actual_val < threshold);
+                    int v1 = 0, v2 = 0;
+                    bool has_v1 = constants.count(op1);
+                    bool has_v2 = constants.count(op2);
+                    
+                    if (!has_v1 && isdigit(op1[0])) { v1 = std::stoi(op1); has_v1 = true; }
+                    else if (has_v1) v1 = constants[op1];
 
-                    if (!is_true) {
-                        std::cout << "[DCE Log] Folding constant condition: " << stmt.text << " to FALSE\n";
-                        stmt.text = "// Folded: " + stmt.text;
-                        stmt.type = STMT_OTHER; 
-                        block.successors.clear(); // Prune the CFG edge
+                    if (!has_v2 && isdigit(op2[0])) { v2 = std::stoi(op2); has_v2 = true; }
+                    else if (has_v2) v2 = constants[op2];
+
+                    if (has_v1 && has_v2) {
+                        int r = 0;
+                        if (oper == "+") r = v1 + v2;
+                        else if (oper == "-") r = v1 - v2;
+                        else if (oper == "*") r = v1 * v2;
+                        else if (oper == "/") { if(v2 != 0) r = v1 / v2; else continue; }
+                        
+                        if (constants.find(var) == constants.end() || constants[var] != r) {
+                            constants[var] = r;
+                            std::cout << "[DCE Log] SCCP Evaluated Math: " << var << " = " << r << "\n";
+                            changed = true;
+                        }
+                    }
+                }
+                // Rule 4: Conditional Pruning
+                else if (stmt.type == STMT_COND && std::regex_search(stmt.text, match, if_cond_regex)) {
+                    std::string var = sanitizeVar(match[1].str());
+                    std::string op = match[2].str();
+                    std::string thresh_str = sanitizeVar(match[3].str());
+                    
+                    int threshold = 0;
+                    if (constants.count(thresh_str)) threshold = constants[thresh_str];
+                    else if (isdigit(thresh_str[0])) threshold = std::stoi(thresh_str);
+                    else continue;
+
+                    if (constants.count(var)) {
+                        int actual_val = constants[var];
+                        bool is_true = false;
+                        if (op == "==") is_true = (actual_val == threshold);
+                        else if (op == "!=") is_true = (actual_val != threshold);
+                        else if (op == ">")  is_true = (actual_val > threshold);
+                        else if (op == "<")  is_true = (actual_val < threshold);
+
+                        if (!is_true) {
+                            std::cout << "[DCE Log] SCCP Folding branch to FALSE: " << stmt.text << "\n";
+                            stmt.text = "// Folded: " + stmt.text;
+                            stmt.type = STMT_OTHER; 
+                            block.successors.clear(); // Prune the CFG edge
+                            changed = true;
+                        }
                     }
                 }
             }
@@ -157,7 +233,7 @@ void removeUnusedFunctions(ProgramIR &prog) {
         }), prog.functions.end());
 }
 
-// Phase D: Intra-procedural Variable Liveness (Mark-and-Sweep)
+// Phase D: Intra-procedural Variable Liveness (Mark-and-Sweep) + Dead Store Elimination
 void applyDCE(FunctionIR &func) {
     // 1. First, process logic to break CFG edges
     applyConstantFolding(func);
@@ -170,7 +246,7 @@ void applyDCE(FunctionIR &func) {
 
     auto mark_live = [&](const Statement &stmt) {
         if (stmt.type == STMT_RETURN || stmt.type == STMT_CALL ||
-            stmt.type == STMT_GOTO || stmt.type == STMT_COND) {
+            stmt.type == STMT_GOTO || stmt.type == STMT_COND || hasSideEffect(stmt)) {
             live_stmt_ids.insert(stmt.id);
             auto uses = extractRHS(stmt.text);
             live_vars.insert(uses.begin(), uses.end());
@@ -180,13 +256,17 @@ void applyDCE(FunctionIR &func) {
     for (const auto &s : func.preamble) mark_live(s);
     for (auto &b : func.blocks) for (const auto &s : b.statements) mark_live(s);
 
-    // Fixed-point Propagation
+    // Fixed-point Propagation (Liveness)
     while (changed) {
         changed = false;
         for (auto &block : func.blocks) {
             for (auto it = block.statements.rbegin(); it != block.statements.rend(); ++it) {
                 if (live_stmt_ids.count(it->id)) continue;
+                
                 std::string lhs = extractLHS(it->text);
+                // Dead Store Elimination (DSE) combined with Liveness:
+                // If this is an assignment, and the LHS is NOT in our live_vars set,
+                // AND it has no side-effects, it's a dead store. We skip marking it live.
                 if (!lhs.empty() && live_vars.count(lhs)) {
                     live_stmt_ids.insert(it->id);
                     auto uses = extractRHS(it->text);
@@ -199,9 +279,10 @@ void applyDCE(FunctionIR &func) {
 
     auto sweep = [&](std::vector<Statement> &stmts) {
         stmts.erase(std::remove_if(stmts.begin(), stmts.end(), [&](const Statement &s) {
+            // Unmarked statements are dead.
             if (live_stmt_ids.find(s.id) == live_stmt_ids.end()) {
-                if (s.type == STMT_ASSIGN || s.type == STMT_OTHER) {
-                    std::cout << "[DCE Log] Removing dead entry: " << s.text << "\n";
+                if (!hasSideEffect(s)) { // Ultimate safety fallback
+                    std::cout << "[DCE Log] Removing dead entry (DSE/Liveness): " << s.text << "\n";
                     return true;
                 }
             }
@@ -221,5 +302,30 @@ void applyGlobalDCE(ProgramIR &prog) {
     // Phase 2: Perform deep cleaning on remaining functions
     for (auto &func : prog.functions) {
         applyDCE(func); 
+    }
+}
+
+// Phase E: ML-Assisted Intelligent DCE
+void applyIntelligentDCE(ProgramIR &prog, const std::set<int>& dead_ids) {
+    auto sweep = [&](std::vector<Statement> &stmts) {
+        stmts.erase(std::remove_if(stmts.begin(), stmts.end(), [&](const Statement &s) {
+            // ML flagged it as dead
+            if (dead_ids.find(s.id) != dead_ids.end()) {
+                if (!hasSideEffect(s)) { // Core compiler safety check overrides ML
+                    std::cout << "[ML DCE Log] Safely Removing predicted dead entry: " << s.text << "\n";
+                    return true;
+                } else {
+                    std::cout << "[ML DCE Warning] Vetoed ML prediction due to side effect: " << s.text << "\n";
+                }
+            }
+            return false; 
+        }), stmts.end());
+    };
+
+    for (auto &func : prog.functions) {
+        sweep(func.preamble);
+        for (auto &b : func.blocks) {
+            sweep(b.statements);
+        }
     }
 }

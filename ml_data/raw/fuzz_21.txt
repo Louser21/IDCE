@@ -1,0 +1,110 @@
+;; Function main (main)
+
+main () {
+    int v_1;
+    int v_2;
+    int v_3;
+    int v_4;
+    int v_5;
+  <bb 1>:
+    v_6 = v_4 * 46;
+    compute(v_1);
+    v_7 = v_1;
+    v_8 = v_7 + v_6;
+    v_9 = v_4;
+    v_10 = 48;
+    v_11 = v_5 + v_6;
+    v_12 = 99;
+    v_13 = v_9;
+    v_14 = v_11 - 47;
+    if (v_7 > 62) goto <bb 1>;
+    goto <bb 2>;
+  <bb 2>:
+    v_15 = v_11 + v_4;
+    v_16 = 41;
+    v_17 = v_15 + v_7;
+    v_18 = v_12 - v_17;
+    v_19 = v_14 - v_15;
+    if (v_7 > 13) goto <bb 3>;
+    goto <bb 3>;
+  <bb 3>:
+    v_20 = v_6;
+    v_21 = 25;
+    v_22 = 84;
+    v_23 = 59;
+    v_24 = 69;
+    v_25 = v_4 + v_17;
+    v_26 = v_2;
+    compute(v_10);
+    v_27 = 30;
+    if (v_5 > 46) goto <bb 5>;
+    goto <bb 4>;
+  <bb 4>:
+    v_28 = 16;
+    v_29 = 40;
+    v_30 = 72;
+    if (v_28 != 43) goto <bb 3>;
+    goto <bb 5>;
+  <bb 5>:
+    v_31 = 22;
+    v_32 = v_16 + 91;
+    v_33 = v_14 / v_24;
+    v_34 = v_7;
+    v_35 = v_32 / 43;
+    v_36 = 75;
+    v_37 = 96;
+    v_38 = v_32 * 13;
+    return v_21;
+}
+
+;; Function func_0 (func_0)
+
+func_0 () {
+    int v_1;
+    int v_2;
+    int v_3;
+    int v_4;
+    int v_5;
+  <bb 1>:
+    v_6 = v_1 / v_2;
+    v_7 = v_1 * 55;
+    v_8 = 2;
+    malloc(v_8);
+    v_9 = v_8;
+    v_10 = v_10;
+    v_11 = v_10;
+    v_12 = v_12 / v_5;
+    if (v_7 == 20) goto <bb 1>;
+    goto <bb 2>;
+  <bb 2>:
+    v_13 = 97;
+    v_14 = v_3;
+    v_15 = v_9;
+    v_16 = 31;
+    v_17 = v_9 + v_6;
+    if (v_9 > 36) goto <bb 1>;
+    goto <bb 3>;
+  <bb 3>:
+    v_18 = 84;
+    v_19 = v_6;
+    v_20 = 10;
+    printf(v_3);
+    v_21 = 28;
+    printf(v_20);
+    if (v_6 > 52) goto <bb 4>;
+    goto <bb 4>;
+  <bb 4>:
+    malloc(v_5);
+    v_22 = v_14 / v_20;
+    v_23 = v_17 + 49;
+    v_24 = 45;
+    v_25 = v_1 / 2;
+    v_26 = 21;
+    v_27 = v_15;
+    v_28 = v_5 * v_1;
+    v_29 = 28;
+    v_30 = 35;
+    printf(v_28);
+    return v_8;
+}
+

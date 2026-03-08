@@ -483,16 +483,16 @@ union yyalloc
 /* YYFINAL -- State number of the termination state.  */
 #define YYFINAL  3
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   15
+#define YYLAST   17
 
 /* YYNTOKENS -- Number of terminals.  */
 #define YYNTOKENS  11
 /* YYNNTS -- Number of nonterminals.  */
 #define YYNNTS  10
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES  18
+#define YYNRULES  19
 /* YYNSTATES -- Number of states.  */
-#define YYNSTATES  24
+#define YYNSTATES  25
 
 /* YYMAXUTOK -- Last valid token kind.  */
 #define YYMAXUTOK   265
@@ -543,7 +543,7 @@ static const yytype_int8 yytranslate[] =
 static const yytype_uint8 yyrline[] =
 {
        0,    56,    56,    60,    61,    62,    66,    67,    71,    72,
-      77,    84,    76,   108,   109,   113,   123,   129,   138
+      73,    78,    85,    77,   109,   110,   114,   124,   130,   139
 };
 #endif
 
@@ -573,7 +573,7 @@ yysymbol_name (yysymbol_kind_t yysymbol)
 }
 #endif
 
-#define YYPACT_NINF (-9)
+#define YYPACT_NINF (-12)
 
 #define yypact_value_is_default(Yyn) \
   ((Yyn) == YYPACT_NINF)
@@ -587,9 +587,9 @@ yysymbol_name (yysymbol_kind_t yysymbol)
    STATE-NUM.  */
 static const yytype_int8 yypact[] =
 {
-      -9,     3,    -3,    -9,    -9,    -9,    -9,     2,    -9,    -9,
-      -9,    -2,    -9,    -9,    -9,    -1,    -9,     4,    -9,    -9,
-      -9,    -9,    -9,    -9
+     -12,     2,    -3,   -12,   -12,   -12,   -12,    14,   -12,   -12,
+     -12,    -1,   -12,   -12,   -12,   -12,     1,   -12,     6,   -12,
+     -12,   -12,   -12,   -12,   -12
 };
 
 /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
@@ -597,21 +597,21 @@ static const yytype_int8 yypact[] =
    means the default is an error.  */
 static const yytype_int8 yydefact[] =
 {
-       3,     0,     0,     1,    10,     5,     4,     2,     6,     8,
-       7,     0,    11,     9,     8,     0,    13,     0,    12,    16,
-      18,    17,    15,    14
+       3,     0,     0,     1,    11,     5,     4,     2,     6,     8,
+       7,     0,    12,    10,     9,     8,     0,    14,     0,    13,
+      17,    19,    18,    16,    15
 };
 
 /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int8 yypgoto[] =
 {
-      -9,    -9,    -9,    -9,    -8,     8,    -9,    -9,    -9,    -9
+     -12,   -12,   -12,   -12,   -11,    -2,   -12,   -12,   -12,   -12
 };
 
 /* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int8 yydefgoto[] =
 {
-       0,     1,     2,     7,    11,     8,     9,    14,    17,    23
+       0,     1,     2,     7,    11,     8,     9,    15,    18,    24
 };
 
 /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
@@ -619,14 +619,14 @@ static const yytype_int8 yydefgoto[] =
    number is the opposite.  If YYTABLE_NINF, syntax error.  */
 static const yytype_int8 yytable[] =
 {
-       4,     5,    12,     3,    16,     4,    15,     6,    13,    13,
-      18,    19,    20,    21,    22,    10
+       4,     5,     3,    12,    16,    10,    17,     6,    13,    14,
+      13,    14,    19,    20,    21,    22,    23,     4
 };
 
 static const yytype_int8 yycheck[] =
 {
-       3,     4,     4,     0,     5,     3,    14,    10,    10,    10,
-       6,     7,     8,     9,    10,     7
+       3,     4,     0,     4,    15,     7,     5,    10,     9,    10,
+       9,    10,     6,     7,     8,     9,    10,     3
 };
 
 /* YYSTOS[STATE-NUM] -- The symbol kind of the accessing symbol of
@@ -634,22 +634,22 @@ static const yytype_int8 yycheck[] =
 static const yytype_int8 yystos[] =
 {
        0,    12,    13,     0,     3,     4,    10,    14,    16,    17,
-      16,    15,     4,    10,    18,    15,     5,    19,     6,     7,
-       8,     9,    10,    20
+      16,    15,     4,     9,    10,    18,    15,     5,    19,     6,
+       7,     8,     9,    10,    20
 };
 
 /* YYR1[RULE-NUM] -- Symbol kind of the left-hand side of rule RULE-NUM.  */
 static const yytype_int8 yyr1[] =
 {
        0,    11,    12,    13,    13,    13,    14,    14,    15,    15,
-      17,    18,    16,    19,    19,    20,    20,    20,    20
+      15,    17,    18,    16,    19,    19,    20,    20,    20,    20
 };
 
 /* YYR2[RULE-NUM] -- Number of symbols on the right-hand side of rule RULE-NUM.  */
 static const yytype_int8 yyr2[] =
 {
        0,     2,     2,     0,     2,     2,     1,     2,     0,     2,
-       0,     0,     9,     0,     2,     1,     1,     1,     1
+       2,     0,     0,     9,     0,     2,     1,     1,     1,     1
 };
 
 
@@ -1130,28 +1130,34 @@ yyreduce:
 #line 1131 "parser.tab.c"
     break;
 
-  case 10: /* $@1: %empty  */
-#line 77 "parser.y"
+  case 10: /* optional_lines: optional_lines RETURN_STMT  */
+#line 73 "parser.y"
+                                 { free((yyvsp[0].str)); }
+#line 1137 "parser.tab.c"
+    break;
+
+  case 11: /* $@1: %empty  */
+#line 78 "parser.y"
       {
           current_function = new FunctionIR();
           // Temporary name until we get the SIG
           current_function->name = std::string((yyvsp[0].str));
           current_block_idx = -1;
       }
-#line 1142 "parser.tab.c"
+#line 1148 "parser.tab.c"
     break;
 
-  case 11: /* $@2: %empty  */
-#line 84 "parser.y"
+  case 12: /* $@2: %empty  */
+#line 85 "parser.y"
       {
           current_function->name = std::string((yyvsp[0].str));
           free((yyvsp[-3].str)); free((yyvsp[0].str));
       }
-#line 1151 "parser.tab.c"
+#line 1157 "parser.tab.c"
     break;
 
-  case 12: /* function: FUNCTION_HEADER $@1 optional_lines FUNCTION_SIG $@2 optional_lines LBRACE function_items RBRACE  */
-#line 89 "parser.y"
+  case 13: /* function: FUNCTION_HEADER $@1 optional_lines FUNCTION_SIG $@2 optional_lines LBRACE function_items RBRACE  */
+#line 90 "parser.y"
       {
           for (size_t i = 0; i < current_function->blocks.size(); ++i) {
               BasicBlock& block = current_function->blocks[i];
@@ -1168,11 +1174,11 @@ yyreduce:
           delete current_function;
           current_function = nullptr;
       }
-#line 1172 "parser.tab.c"
+#line 1178 "parser.tab.c"
     break;
 
-  case 15: /* function_item: TEXT_LINE  */
-#line 114 "parser.y"
+  case 16: /* function_item: TEXT_LINE  */
+#line 115 "parser.y"
       {
           Statement stmt;
           stmt.id = stmt_counter++;
@@ -1182,21 +1188,21 @@ yyreduce:
           else current_function->blocks[current_block_idx].statements.push_back(stmt);
           free((yyvsp[0].str));
       }
-#line 1186 "parser.tab.c"
+#line 1192 "parser.tab.c"
     break;
 
-  case 16: /* function_item: BLOCK_HEADER  */
-#line 124 "parser.y"
+  case 17: /* function_item: BLOCK_HEADER  */
+#line 125 "parser.y"
       {
           current_function->blocks.emplace_back();
           current_block_idx = current_function->blocks.size() - 1;
           current_function->blocks[current_block_idx].id = (yyvsp[0].num);
       }
-#line 1196 "parser.tab.c"
+#line 1202 "parser.tab.c"
     break;
 
-  case 17: /* function_item: RETURN_STMT  */
-#line 130 "parser.y"
+  case 18: /* function_item: RETURN_STMT  */
+#line 131 "parser.y"
       {
           Statement stmt;
           stmt.id = stmt_counter++;
@@ -1205,11 +1211,11 @@ yyreduce:
           if (current_block_idx != -1) current_function->blocks[current_block_idx].statements.push_back(stmt);
           free((yyvsp[0].str));
       }
-#line 1209 "parser.tab.c"
+#line 1215 "parser.tab.c"
     break;
 
-  case 18: /* function_item: GOTO_STMT  */
-#line 139 "parser.y"
+  case 19: /* function_item: GOTO_STMT  */
+#line 140 "parser.y"
       {
           Statement stmt;
           stmt.id = stmt_counter++;
@@ -1220,11 +1226,11 @@ yyreduce:
               current_function->blocks[current_block_idx].successors.push_back((yyvsp[0].num));
           }
       }
-#line 1224 "parser.tab.c"
+#line 1230 "parser.tab.c"
     break;
 
 
-#line 1228 "parser.tab.c"
+#line 1234 "parser.tab.c"
 
       default: break;
     }
@@ -1417,7 +1423,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 151 "parser.y"
+#line 152 "parser.y"
 
 
 void yyerror(const char *s) {

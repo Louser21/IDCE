@@ -1,0 +1,38 @@
+;; Function main (main)
+
+main () {
+    int v_1;
+    int v_2;
+    int v_3;
+    int v_4;
+    int v_5;
+  <bb 1>:
+    helper(v_2);
+    v_6 = 48;
+    v_7 = 24;
+    v_8 = v_8;
+    v_9 = v_4 + 56;
+    helper(v_4);
+    helper(v_8);
+    v_10 = v_6 + 42;
+    if (v_1 < 59) goto <bb 2>;
+    goto <bb 2>;
+  <bb 2>:
+    v_11 = v_5;
+    v_12 = v_9;
+    v_13 = v_7 - v_13;
+    v_14 = 42;
+    v_15 = v_11;
+    v_16 = 1;
+    if (v_3 == 74) goto <bb 1>;
+    goto <bb 3>;
+  <bb 3>:
+    malloc(v_6);
+    v_17 = v_6 * 5;
+    compute(v_2);
+    v_18 = 99;
+    v_19 = v_14 / v_14;
+    v_20 = v_6;
+    return v_17;
+}
+
