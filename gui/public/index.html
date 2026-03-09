@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>IDCE — ML-Assisted DCE Visualizer</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+<!-- Viz.js for DOT → SVG rendering -->
+<script src="https://cdn.jsdelivr.net/npm/@viz-js/viz@3.4.0/lib/viz-standalone.js"></script>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "primary":          "#00ff88",
+          "primary-dim":      "rgba(0,255,136,0.15)",
+          "background-dark":  "#0d1117",
+          "surface":          "#161b22",
+          "surface-2":        "#1c2128",
+          "border-col":       "#30363d",
+        },
+        fontFamily: {
+          "display": ["Inter","sans-serif"],
+          "mono":    ["JetBrains Mono","monospace"],
+        },
+        borderRadius: {
+          DEFAULT: "0.25rem",
+          lg: "0.5rem",
+          xl: "0.75rem",
+          full: "9999px",
+        },
+      },
+    },
+  };
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  :root { --glow: 0 0 18px rgba(0,255,136,.35); }
+
+  /* Scrollbars */
+  .scr::-webkit-scrollbar { width:5px; height:5px; }
+  .scr::-webkit-scrollbar-track { background:transparent; }
+  .scr::-webkit-scrollbar-thumb { background:#30363d; border-radius:8px; }
+  .scr::-webkit-scrollbar-thumb:hover { background:#00ff88; }
+
+  /* Glow */
+  .glow { box-shadow: var(--glow); }
+
+  /* Dot-grid bg */
+  .dot-grid {
+    background-image: radial-gradient(#00ff88 1px, transparent 1px);
+    background-size: 26px 26px;
+    opacity: .04;
+  }
+
+  /* CFG SVG styling */
+  #cfg-svg svg { width:100% !important; height:100% !important; }
+  #cfg-svg svg g.node rect,
+  #cfg-svg svg g.node polygon { fill:#161b22 !important; stroke:#30363d !important; stroke-width:1.5 !important; rx:6 !important; }
+  #cfg-svg svg g.node text { fill:#e2e8f0 !important; font-family:'JetBrains Mono',monospace !important; font-size:11px !important; }
+  #cfg-svg svg g.edge path { stroke:#00ff88 !important; stroke-width:1.5 !important; marker-end:url(#arrow-green) !important; }
+  #cfg-svg svg g.edge polygon { fill:#00ff88 !important; stroke:#00ff88 !important; }
+  #cfg-svg svg g.graph polygon { fill:#0d1117 !important; stroke:none !important; }
+  #cfg-svg svg g.cluster rect { fill:transparent !important; stroke:#00ff88 !important; stroke-width:1 !important; stroke-dasharray:5,3 !important; }
+  #cfg-svg svg g.cluster text { fill:#00ff88 !important; font-family:'JetBrains Mono',monospace !important; font-size:11px !important; }
+  #cfg-svg svg { background: transparent !important; }
+
+  /* Log entry colours */
+  .log-remove  { color: #f87171; }
+  .log-warn    { color: #fbbf24; }
+  .log-ml      { color: #a78bfa; }
+  .log-fold    { color: #38bdf8; }
+  .log-error   { color: #ef4444; }
+  .log-info    { color: #94a3b8; }
+
+  /* Stage step */
+  .step-done   { color:#00ff88; }
+  .step-active { color:#fbbf24; }
+  .step-idle   { color:#4b5563; }
+
+  /* Stat ring */
+  .ring-track { color: #30363d; }
+  .ring-fill  { color: #00ff88; transition: stroke-dashoffset 1s ease; }
+
+  /* Drag-over highlight */
+  .drag-over { border-color: #00ff88 !important; background: rgba(0,255,136,.05); }
+
+  /* Sidebar nav active */
+  .nav-active { background:rgba(0,255,136,.1); color:#00ff88; border-color:rgba(0,255,136,.25); }
+  
+  /* Animated progress bar */
+  @keyframes progress-anim { 0%{background-position:0 0} 100%{background-position:40px 0} }
+  .progress-stripe {
+    background-image: repeating-linear-gradient(
+      -45deg,rgba(255,255,255,.07) 0px,rgba(255,255,255,.07) 8px,
+      transparent 8px,transparent 16px);
+    animation: progress-anim 1s linear infinite;
+  }
+
+  /* Fade in */
+  @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+  .fade-up { animation: fadeUp .4s ease forwards; }
+
+  /* Zoom controls */
+  #zoom-controls button { transition: background .15s; }
+</style>
+</head>
+<body class="bg-background-dark text-slate-100 h-screen flex flex-col overflow-hidden font-display">
+
+<!-- ═══════════════════════════════ TOP BAR ════════════════════════════════ -->
+<header class="flex items-center justify-between border-b border-border-col bg-surface px-4 py-2 shrink-0 z-20">
+  <div class="flex items-center gap-3">
+    <span class="material-symbols-outlined text-primary text-xl">account_tree</span>
+    <h1 class="text-sm font-bold tracking-widest uppercase opacity-80 font-mono">IDCE</h1>
+    <span class="hidden sm:block text-xs text-slate-500">— ML-Assisted Dead Code Elimination Visualizer</span>
+  </div>
+  <div class="flex items-center gap-3">
+    <span id="status-chip" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-500 border border-border-col transition-all">IDLE</span>
+    <span class="text-[10px] font-mono text-slate-600">v1.0.0</span>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════ BODY ══════════════════════════════════ -->
+<div class="flex flex-1 overflow-hidden">
+
+  <!-- ─── LEFT SIDEBAR ─────────────────────────────────────────────────── -->
+  <aside class="w-64 border-r border-border-col bg-surface flex flex-col shrink-0">
+
+    <!-- Nav -->
+    <nav class="p-3 space-y-1">
+      <button data-panel="dashboard"  class="nav-btn nav-active w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-transparent text-sm font-medium transition-all">
+        <span class="material-symbols-outlined text-[18px]">dashboard</span> Dashboard
+      </button>
+      <button data-panel="cfg" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-transparent text-sm font-medium transition-all hover:bg-white/5 opacity-70 hover:opacity-100">
+        <span class="material-symbols-outlined text-[18px]">account_tree</span> CFG View
+      </button>
+      <button data-panel="logs" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-transparent text-sm font-medium transition-all hover:bg-white/5 opacity-70 hover:opacity-100">
+        <span class="material-symbols-outlined text-[18px]">terminal</span> Analysis Logs
+      </button>
+      <button data-panel="model" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-transparent text-sm font-medium transition-all hover:bg-white/5 opacity-70 hover:opacity-100">
+        <span class="material-symbols-outlined text-[18px]">memory</span> Model Info
+      </button>
+    </nav>
+
+    <div class="mx-3 border-t border-border-col"></div>
+
+    <!-- Input section -->
+    <div class="p-3 flex flex-col gap-4 flex-1 scr overflow-y-auto">
+
+      <!-- File drop -->
+      <section>
+        <p class="text-[10px] font-bold uppercase tracking-widest mb-2 text-slate-500">Input Stream</p>
+        <div id="drop-zone"
+          class="border-2 border-dashed border-border-col rounded-lg p-5 flex flex-col items-center justify-center text-center gap-2 cursor-pointer transition-all hover:border-primary/50 group"
+          onclick="document.getElementById('file-input').click()">
+          <span class="material-symbols-outlined text-3xl text-slate-600 group-hover:text-primary transition-colors">upload_file</span>
+          <p class="text-xs font-medium text-slate-300">Drop <span class="text-primary font-mono">.ssa</span> file here</p>
+          <p class="text-[10px] text-slate-600">or click to browse</p>
+          <input type="file" id="file-input" accept=".ssa,.txt" class="hidden"/>
+        </div>
+        <!-- Chosen file indicator -->
+        <div id="file-badge" class="hidden mt-2 flex items-center gap-2 p-2 rounded bg-primary/5 border border-primary/20">
+          <span class="material-symbols-outlined text-primary text-sm">description</span>
+          <span id="file-name" class="text-xs font-mono text-primary truncate flex-1"></span>
+          <button onclick="clearFile()" class="text-slate-500 hover:text-red-400 transition-colors">
+            <span class="material-symbols-outlined text-sm">close</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Sample files -->
+      <section>
+        <p class="text-[10px] font-bold uppercase tracking-widest mb-2 text-slate-500">Built-in Samples</p>
+        <div id="sample-list" class="space-y-1 text-xs font-mono">
+          <div class="text-slate-600 animate-pulse">Loading...</div>
+        </div>
+      </section>
+
+      <!-- Mode -->
+      <section>
+        <p class="text-[10px] font-bold uppercase tracking-widest mb-2 text-slate-500">Optimization Mode</p>
+        <div class="space-y-2">
+          <label id="mode-classical" class="mode-label flex items-center justify-between p-3 rounded-lg border border-border-col bg-surface-2 cursor-pointer transition-all hover:border-primary/30">
+            <div>
+              <p class="text-sm font-semibold">Classical DCE</p>
+              <p class="text-[10px] text-slate-500 mt-0.5">Liveness + SCCP + Reachability</p>
+            </div>
+            <input type="radio" name="mode" value="classical" class="accent-primary" checked/>
+          </label>
+          <label id="mode-ml" class="mode-label flex items-center justify-between p-3 rounded-lg border border-border-col bg-surface-2 cursor-pointer transition-all hover:border-primary/30">
+            <div>
+              <p class="text-sm font-semibold">ML-Guided DCE</p>
+              <p class="text-[10px] text-slate-500 mt-0.5">GraphSAGE GNN inference</p>
+            </div>
+            <input type="radio" name="mode" value="ml" class="accent-primary"/>
+          </label>
+        </div>
+      </section>
+
+      <!-- Run button -->
+      <button id="run-btn" onclick="startAnalysis()"
+        class="w-full py-3 rounded-lg bg-primary text-background-dark font-bold text-sm glow flex items-center justify-center gap-2 hover:brightness-110 active:scale-[.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+        <span class="material-symbols-outlined text-lg">play_arrow</span>
+        RUN ANALYSIS
+      </button>
+    </div>
+
+    <!-- Footer -->
+    <div class="p-3 border-t border-border-col">
+      <div class="flex items-center justify-between mb-1">
+        <span class="text-[10px] uppercase tracking-widest text-slate-600 font-bold">System</span>
+        <span id="sys-dot" class="size-2 rounded-full bg-primary animate-pulse"></span>
+      </div>
+      <p class="text-[10px] font-mono text-slate-600">IDCE binary: <span class="text-primary">ready</span></p>
+    </div>
+  </aside>
+
+  <!-- ─── MAIN CONTENT ──────────────────────────────────────────────────── -->
+  <main class="flex-1 flex flex-col bg-background-dark overflow-hidden">
+
+    <!-- Pipeline stages bar -->
+    <div class="px-5 py-3 border-b border-border-col bg-surface/60 shrink-0">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Pipeline</span>
+        <span id="stage-label" class="text-[10px] font-mono text-slate-500">Waiting for input</span>
+      </div>
+      <!-- Progress bar -->
+      <div class="relative h-1.5 bg-border-col rounded-full overflow-hidden mb-2">
+        <div id="progress-bar" class="absolute top-0 left-0 h-full bg-primary rounded-full transition-all duration-700" style="width:0%"></div>
+        <div id="progress-stripe" class="absolute top-0 left-0 h-full rounded-full progress-stripe hidden" style="width:0%"></div>
+      </div>
+      <!-- Steps -->
+      <div class="grid grid-cols-4 gap-1 text-[10px] font-medium">
+        <div id="step-0" class="flex items-center gap-1 step-idle">
+          <span class="material-symbols-outlined text-[14px]">radio_button_unchecked</span>① Parse
+        </div>
+        <div id="step-1" class="flex items-center gap-1 step-idle">
+          <span class="material-symbols-outlined text-[14px]">radio_button_unchecked</span>② Features
+        </div>
+        <div id="step-2" class="flex items-center gap-1 step-idle">
+          <span class="material-symbols-outlined text-[14px]">radio_button_unchecked</span>③ DCE Pass
+        </div>
+        <div id="step-3" class="flex items-center gap-1 step-idle">
+          <span class="material-symbols-outlined text-[14px]">radio_button_unchecked</span>④ Export
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Panel container ──────────────────────────────────────────────── -->
+    <div class="flex-1 overflow-hidden relative">
+
+      <!-- ======  DASHBOARD PANEL  ====== -->
+      <div id="panel-dashboard" class="panel absolute inset-0 flex items-center justify-center p-8">
+        <div class="dot-grid absolute inset-0 pointer-events-none"></div>
+        <div id="empty-state" class="relative text-center flex flex-col items-center gap-6 fade-up max-w-md">
+          <div class="size-24 rounded-full border-2 border-primary/30 bg-primary/5 flex items-center justify-center glow">
+            <span class="material-symbols-outlined text-primary text-5xl">account_tree</span>
+          </div>
+          <div>
+            <h2 class="text-2xl font-bold tracking-tight">Ready to Analyze</h2>
+            <p class="text-slate-500 text-sm mt-2 leading-relaxed">
+              Upload a <span class="font-mono text-primary">.ssa</span> file or pick a sample,<br/>
+              choose Classical or ML-Guided DCE, then hit <strong class="text-primary">Run Analysis</strong>.
+            </p>
+          </div>
+          <div class="flex gap-3 text-[11px] font-mono text-slate-600">
+            <span class="px-2 py-1 rounded bg-surface border border-border-col">SCCP</span>
+            <span class="px-2 py-1 rounded bg-surface border border-border-col">Liveness</span>
+            <span class="px-2 py-1 rounded bg-surface border border-border-col">GraphSAGE</span>
+            <span class="px-2 py-1 rounded bg-surface border border-border-col">DSE</span>
+          </div>
+        </div>
+        <!-- Stats (shown after analysis) -->
+        <div id="stats-panel" class="hidden relative w-full max-w-3xl fade-up">
+          <h2 class="text-lg font-bold mb-4">Analysis Complete</h2>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <div class="p-4 rounded-xl bg-surface border border-border-col">
+              <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Functions</p>
+              <p id="stat-fns" class="text-3xl font-mono text-primary">—</p>
+            </div>
+            <div class="p-4 rounded-xl bg-surface border border-border-col">
+              <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Live Blocks</p>
+              <p id="stat-blocks" class="text-3xl font-mono text-primary">—</p>
+            </div>
+            <div class="p-4 rounded-xl bg-surface border border-border-col">
+              <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Live Stmts</p>
+              <p id="stat-stmts" class="text-3xl font-mono text-primary">—</p>
+            </div>
+            <div class="p-4 rounded-xl bg-surface border border-border-col">
+              <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Removed</p>
+              <p id="stat-removed" class="text-3xl font-mono text-red-400">—</p>
+            </div>
+          </div>
+          <!-- Summary text -->
+          <div class="p-4 rounded-xl bg-surface border border-border-col">
+            <div class="flex items-center justify-between mb-2">
+              <p class="text-xs font-bold uppercase tracking-widest text-slate-500">Analysis Report</p>
+              <button onclick="downloadSummary()" class="text-[10px] font-mono text-primary hover:underline flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm">download</span> summary.txt
+              </button>
+            </div>
+            <pre id="summary-text" class="font-mono text-[11px] text-slate-400 leading-relaxed overflow-x-auto scr whitespace-pre-wrap max-h-48 scr overflow-y-auto"></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======  CFG VIEW PANEL  ====== -->
+      <div id="panel-cfg" class="panel hidden absolute inset-0 flex flex-col">
+        <div class="flex items-center justify-between px-4 py-2 border-b border-border-col bg-surface/60 shrink-0">
+          <div class="flex items-center gap-3">
+            <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Control Flow Graph</span>
+            <span id="cfg-mode-badge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 hidden">CLASSICAL</span>
+          </div>
+          <div id="zoom-controls" class="flex items-center gap-1">
+            <button onclick="zoomCFG('out')" class="px-2 py-0.5 rounded bg-surface border border-border-col text-xs hover:bg-white/5">−</button>
+            <button onclick="zoomCFG('reset')" class="px-2 py-0.5 rounded bg-surface border border-border-col text-xs hover:bg-white/5">⟳</button>
+            <button onclick="zoomCFG('in')" class="px-2 py-0.5 rounded bg-surface border border-border-col text-xs hover:bg-white/5">+</button>
+            <button onclick="downloadDot()" class="ml-2 text-[10px] font-mono text-primary hover:underline flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm">download</span>.dot
+            </button>
+          </div>
+        </div>
+        <div class="flex-1 relative overflow-hidden">
+          <div class="dot-grid absolute inset-0 pointer-events-none"></div>
+          <!-- Empty CFG state -->
+          <div id="cfg-empty" class="absolute inset-0 flex items-center justify-center text-center">
+            <div class="text-slate-600">
+              <span class="material-symbols-outlined text-5xl block mb-2">account_tree</span>
+              <p class="text-sm">Run analysis to see the CFG</p>
+            </div>
+          </div>
+          <!-- CFG SVG output -->
+          <div id="cfg-svg" class="absolute inset-0 overflow-auto scr p-4"
+               style="display:none; transform-origin:top left;">
+          </div>
+          <!-- Legend -->
+          <div class="absolute bottom-3 left-3 flex gap-3 text-[10px] font-bold uppercase tracking-wider text-slate-600 pointer-events-none">
+            <div class="flex items-center gap-1"><span class="size-2 rounded-sm bg-primary"></span>Live</div>
+            <div class="flex items-center gap-1"><span class="size-2 rounded-sm bg-red-500"></span>Dead</div>
+            <div class="flex items-center gap-1"><span class="size-2 rounded-sm bg-sky-500"></span>Active</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======  LOGS PANEL  ====== -->
+      <div id="panel-logs" class="panel hidden absolute inset-0 flex flex-col bg-black/60">
+        <div class="flex items-center justify-between px-4 py-2 border-b border-border-col bg-surface/80 shrink-0">
+          <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-sm text-slate-500">terminal</span>
+            <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Analysis Console</span>
+            <span id="log-live-badge" class="hidden text-[10px] px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">LIVE</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="copyLogs()" title="Copy logs" class="p-1.5 hover:bg-white/10 rounded transition-colors">
+              <span class="material-symbols-outlined text-sm text-slate-500">content_copy</span>
+            </button>
+            <button onclick="clearLogs()" title="Clear" class="p-1.5 hover:bg-white/10 rounded transition-colors">
+              <span class="material-symbols-outlined text-sm text-slate-500">delete</span>
+            </button>
+          </div>
+        </div>
+        <div id="log-console" class="flex-1 p-4 font-mono text-[12px] leading-6 overflow-y-auto scr">
+          <div class="text-slate-600 italic">No logs yet. Run analysis to begin.</div>
+        </div>
+      </div>
+
+      <!-- ======  MODEL INFO PANEL  ====== -->
+      <div id="panel-model" class="panel hidden absolute inset-0 overflow-y-auto scr p-6">
+        <div class="max-w-2xl mx-auto space-y-4 fade-up">
+          <h2 class="text-lg font-bold">GNN Model — DCENodeClassifier</h2>
+          <p class="text-slate-500 text-sm">A GraphSAGE-based node classifier trained to predict dead IR instructions from the Control Flow Graph structure.</p>
+
+          <div class="grid grid-cols-2 gap-3">
+            <InfoCard title="Architecture" value="2-Layer GraphSAGE" sub="hidden_dim = 32"/>
+            <InfoCard title="Task" value="Node Classification" sub="Binary: live vs dead"/>
+            <InfoCard title="Input Features" value="2-dimensional" sub="opcode_emb, side_effect_flag"/>
+            <InfoCard title="Output" value="Sigmoid logits" sub="threshold = 0.5"/>
+          </div>
+
+          <div class="p-4 rounded-xl bg-surface border border-border-col">
+            <p class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Architecture</p>
+            <div class="font-mono text-xs space-y-1 text-slate-300">
+              <div class="flex gap-3"><span class="text-primary">conv1</span><span>SAGEConv(2 → 32)</span></div>
+              <div class="ml-6 text-slate-600">→ ReLU → Dropout(0.2)</div>
+              <div class="flex gap-3"><span class="text-primary">conv2</span><span>SAGEConv(32 → 32)</span></div>
+              <div class="ml-6 text-slate-600">→ ReLU</div>
+              <div class="flex gap-3"><span class="text-primary">head</span><span>Linear(32 → 1)</span></div>
+              <div class="ml-6 text-slate-600">→ Sigmoid → Binary decision</div>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-surface border border-border-col">
+            <p class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Training Config</p>
+            <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
+              <Row k="Epochs" v="40"/>
+              <Row k="Optimizer" v="Adam (lr=0.01)"/>
+              <Row k="Loss" v="BCEWithLogitsLoss"/>
+              <Row k="pos_weight" v="0.2 (protect live code)"/>
+              <Row k="Train/Test" v="80 / 20 split"/>
+              <Row k="Batch size" v="32 graphs"/>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-surface border border-border-col">
+            <p class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Safety Override</p>
+            <p class="text-sm text-slate-400 leading-relaxed">
+              Even if the GNN predicts a statement as <span class="text-red-400 font-mono">dead</span>, the
+              <code class="bg-black/40 px-1 rounded text-primary">hasSideEffect()</code> check in
+              <code class="bg-black/40 px-1 rounded text-slate-300">analysis.cpp</code> acts as a hard veto.
+              Calls to <code class="bg-black/40 px-1 rounded text-slate-300">printf</code>, <code class="bg-black/40 px-1 rounded text-slate-300">malloc</code>,
+              pointer-dereference assignments, and other side-effectful ops are <em class="text-yellow-400">never</em> removed by the ML pass.
+            </p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-surface border border-border-col">
+            <p class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Model Weights</p>
+            <p class="font-mono text-xs text-slate-400">ml_data/dce_model.pt</p>
+            <p class="text-xs text-slate-600 mt-1">~100 synthetic CFG samples generated via fuzzer.py</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ────────────────────────── FOOTER LOG BAR ────────────────────────────── -->
+<footer class="h-36 border-t border-border-col bg-black/60 flex flex-col shrink-0 font-mono">
+  <div class="flex items-center justify-between px-4 py-1.5 bg-surface/80 border-b border-border-col shrink-0">
+    <div class="flex items-center gap-3">
+      <span class="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+        <span class="material-symbols-outlined text-sm">terminal</span> Console
+      </span>
+      <span id="footer-live" class="hidden text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">LIVE</span>
+    </div>
+    <button onclick="copyLogs()" class="text-slate-600 hover:text-primary transition-colors">
+      <span class="material-symbols-outlined text-sm">content_copy</span>
+    </button>
+  </div>
+  <div id="footer-log" class="flex-1 px-4 py-2 overflow-y-auto scr text-[11px] leading-5 space-y-0.5">
+    <span class="text-slate-700 italic">Waiting for analysis…</span>
+  </div>
+</footer>
+
+<!-- ═══════════════════════════  JAVASCRIPT  ═══════════════════════════════ -->
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let selectedFile = null;
+let selectedSample = null;
+let currentDot = '';
+let currentSummary = '';
+let currentRemoved = 0;
+let cfgScale = 1;
+let ws = null;
+let logLines = [];
+
+// ── Panel switching ────────────────────────────────────────────────────────
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nav-btn').forEach(b => {
+      b.classList.remove('nav-active');
+      b.classList.add('opacity-70');
+    });
+    btn.classList.add('nav-active');
+    btn.classList.remove('opacity-70');
+    const target = btn.dataset.panel;
+    document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
+    document.getElementById(`panel-${target}`)?.classList.remove('hidden');
+  });
+});
+
+// ── Mode radio styling ─────────────────────────────────────────────────────
+document.querySelectorAll('input[name="mode"]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    document.querySelectorAll('.mode-label').forEach(l => {
+      l.classList.remove('border-primary/40','bg-primary/5');
+      l.classList.add('border-border-col');
+    });
+    const label = radio.closest('.mode-label');
+    label.classList.remove('border-border-col');
+    label.classList.add('border-primary/40','bg-primary/5');
+  });
+});
+
+// ── File input ─────────────────────────────────────────────────────────────
+const fileInput = document.getElementById('file-input');
+const dropZone  = document.getElementById('drop-zone');
+
+fileInput.addEventListener('change', e => {
+  if (e.target.files[0]) setFile(e.target.files[0]);
+});
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+});
+
+function setFile(f) {
+  selectedFile = f;
+  selectedSample = null;
+  document.getElementById('file-badge').classList.remove('hidden');
+  document.getElementById('file-name').textContent = f.name;
+  document.querySelectorAll('.sample-btn').forEach(b => b.classList.remove('bg-primary/10','text-primary','border-primary/30'));
+}
+
+function clearFile() {
+  selectedFile = null;
+  fileInput.value = '';
+  document.getElementById('file-badge').classList.add('hidden');
+}
+
+// ── Load sample list ───────────────────────────────────────────────────────
+async function loadSamples() {
+  try {
+    const res = await fetch('/api/samples');
+    const samples = await res.json();
+    const cont = document.getElementById('sample-list');
+    if (!samples.length) { cont.innerHTML = '<div class="text-slate-600">No samples found</div>'; return; }
+    cont.innerHTML = samples.map(s => `
+      <button data-name="${s.name}" class="sample-btn w-full flex items-center justify-between px-2 py-1.5 rounded border border-border-col bg-surface-2 hover:border-primary/40 transition-all text-left">
+        <span class="font-mono text-[11px] text-slate-300 truncate">${s.name}</span>
+        <span class="text-[9px] text-slate-600 ml-1 shrink-0">${(s.size/1024).toFixed(1)}k</span>
+      </button>
+    `).join('');
+    document.querySelectorAll('.sample-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectedSample = btn.dataset.name;
+        selectedFile = null;
+        fileInput.value = '';
+        document.getElementById('file-badge').classList.add('hidden');
+        document.querySelectorAll('.sample-btn').forEach(b => b.classList.remove('bg-primary/10','text-primary','border-primary/30'));
+        btn.classList.add('bg-primary/10','text-primary','border-primary/30');
+      });
+    });
+  } catch { document.getElementById('sample-list').innerHTML = '<div class="text-red-500">Failed to load</div>'; }
+}
+loadSamples();
+
+// ── Stage progress ─────────────────────────────────────────────────────────
+const STAGE_LABELS  = ['Parsing IR…', 'Extracting features…', 'Running DCE pass…', 'Exporting report…'];
+const STAGE_ICONS   = ['sync','data_object','auto_fix_high','save'];
+const STAGE_WIDTHS  = ['20%','45%','75%','100%'];
+
+function setStage(n) {
+  const bar    = document.getElementById('progress-bar');
+  const stripe = document.getElementById('progress-stripe');
+  const label  = document.getElementById('stage-label');
+
+  bar.style.width = STAGE_WIDTHS[n] || '100%';
+  stripe.style.width = STAGE_WIDTHS[n] || '100%';
+  label.textContent  = STAGE_LABELS[n] || 'Done';
+
+  for (let i = 0; i < 4; i++) {
+    const el = document.getElementById(`step-${i}`);
+    const icon = el.querySelector('.material-symbols-outlined');
+    el.className = el.className.replace(/step-\w+/, '');
+    if (i < n) {
+      el.classList.add('step-done');
+      icon.textContent = 'check_circle';
+    } else if (i === n) {
+      el.classList.add('step-active');
+      icon.textContent = 'sync';
+    } else {
+      el.classList.add('step-idle');
+      icon.textContent = 'radio_button_unchecked';
+    }
+  }
+}
+
+function setChip(text, color='text-slate-500 bg-slate-800 border-border-col') {
+  const chip = document.getElementById('status-chip');
+  chip.textContent = text;
+  chip.className = `text-[10px] font-mono px-2 py-0.5 rounded border transition-all ${color}`;
+}
+
+// ── Logging ────────────────────────────────────────────────────────────────
+function appendLog(text, logType='info', time='') {
+  logLines.push({ text, logType, time });
+  const cls = `log-${logType}`;
+  const ts  = time ? `<span class="text-primary/40 shrink-0 mr-3">${time}</span>` : '';
+  const html = `<div class="flex ${cls} group">${ts}<span>${escHtml(text)}</span></div>`;
+
+  // Full log panel
+  const cons = document.getElementById('log-console');
+  const wasEmpty = cons.querySelector('.italic');
+  if (wasEmpty) cons.innerHTML = '';
+  cons.insertAdjacentHTML('beforeend', html);
+  cons.scrollTop = cons.scrollHeight;
+
+  // Footer bar (last 6 lines)
+  const footer = document.getElementById('footer-log');
+  const wasEmptyF = footer.querySelector('.italic');
+  if (wasEmptyF) footer.innerHTML = '';
+  footer.insertAdjacentHTML('beforeend', html);
+  footer.scrollTop = footer.scrollHeight;
+}
+
+function clearLogs() {
+  logLines = [];
+  document.getElementById('log-console').innerHTML = '<div class="text-slate-600 italic">Cleared.</div>';
+  document.getElementById('footer-log').innerHTML   = '<span class="text-slate-700 italic">Waiting…</span>';
+}
+
+function copyLogs() {
+  navigator.clipboard.writeText(logLines.map(l => `[${l.time}] ${l.text}`).join('\n'));
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── CFG Render ─────────────────────────────────────────────────────────────
+let vizInstance = null;
+
+async function renderCFG(dotSource) {
+  const wrap = document.getElementById('cfg-svg');
+  const empty = document.getElementById('cfg-empty');
+  if (!dotSource) return;
+
+  empty.style.display = 'none';
+  wrap.style.display = 'block';
+  wrap.innerHTML = '<div class="flex items-center justify-center h-full text-slate-500 text-sm font-mono"><span class="animate-pulse">Rendering CFG…</span></div>';
+
+  try {
+    if (!vizInstance) {
+      vizInstance = await Viz.instance();
+    }
+    const svg = vizInstance.renderSVGElement(dotSource);
+    
+    // Style the SVG nodes by label content
+    svg.querySelectorAll('g.node').forEach(node => {
+      const text = node.querySelector('text')?.textContent || '';
+      const rect = node.querySelector('rect,polygon');
+      if (!rect) return;
+      if (text.includes('DEAD') || text.includes('unreachable')) {
+        rect.style.stroke = '#ef4444';
+        rect.style.fill = 'rgba(239,68,68,.08)';
+      }
+    });
+
+    wrap.innerHTML = '';
+    wrap.appendChild(svg);
+    cfgScale = 1;
+  } catch (e) {
+    wrap.innerHTML = `<div class="p-4 text-red-400 font-mono text-xs">CFG render error: ${escHtml(e.message)}</div>`;
+  }
+}
+
+function zoomCFG(dir) {
+  const wrap = document.getElementById('cfg-svg');
+  if (dir === 'reset') cfgScale = 1;
+  else if (dir === 'in')  cfgScale = Math.min(cfgScale + 0.2, 3);
+  else if (dir === 'out') cfgScale = Math.max(cfgScale - 0.2, 0.3);
+  wrap.style.transform = `scale(${cfgScale})`;
+  wrap.style.transformOrigin = 'top left';
+}
+
+// ── Downloads ──────────────────────────────────────────────────────────────
+function downloadDot() {
+  if (!currentDot) return;
+  const a = document.createElement('a');
+  a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(currentDot);
+  a.download = 'graph.dot';
+  a.click();
+}
+
+function downloadSummary() {
+  if (!currentSummary) return;
+  const a = document.createElement('a');
+  a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(currentSummary);
+  a.download = 'summary.txt';
+  a.click();
+}
+
+// ── On analysis done ───────────────────────────────────────────────────────
+function onDone(data) {
+  currentDot     = data.dot     || '';
+  currentSummary = data.summary || '';
+  const stats    = data.stats   || {};
+
+  // Update stats panel
+  document.getElementById('empty-state').classList.add('hidden');
+  document.getElementById('stats-panel').classList.remove('hidden');
+  document.getElementById('stats-panel').classList.add('fade-up');
+
+  document.getElementById('stat-fns').textContent    = stats.functions ?? '—';
+  document.getElementById('stat-blocks').textContent = stats.blocks    ?? '—';
+  document.getElementById('stat-stmts').textContent  = stats.liveStmts ?? '—';
+  document.getElementById('stat-removed').textContent = currentRemoved;
+  document.getElementById('summary-text').textContent = currentSummary;
+
+  // Progress done
+  const bar = document.getElementById('progress-bar');
+  bar.style.width = '100%';
+  document.getElementById('progress-stripe').classList.add('hidden');
+  document.getElementById('stage-label').textContent = '✓ Analysis complete';
+
+  for (let i = 0; i < 4; i++) {
+    const el = document.getElementById(`step-${i}`);
+    el.className = el.className.replace(/step-\w+/, 'step-done');
+    el.querySelector('.material-symbols-outlined').textContent = 'check_circle';
+  }
+
+  setChip('DONE', 'text-primary bg-primary/10 border-primary/30');
+  document.getElementById('run-btn').disabled = false;
+
+  // CFG badge
+  const mode = document.querySelector('input[name="mode"]:checked')?.value || 'classical';
+  const badge = document.getElementById('cfg-mode-badge');
+  badge.classList.remove('hidden');
+  badge.textContent = mode === 'ml' ? 'ML-GUIDED' : 'CLASSICAL';
+
+  if (currentDot) renderCFG(currentDot);
+}
+
+// ── Main analysis runner ───────────────────────────────────────────────────
+async function startAnalysis() {
+  if (!selectedFile && !selectedSample) {
+    showToast('⚠️ Please upload a file or select a sample first.'); return;
+  }
+
+  const mode = document.querySelector('input[name="mode"]:checked')?.value || 'classical';
+  clearLogs();
+  currentRemoved = 0;
+  document.getElementById('run-btn').disabled = true;
+  document.getElementById('footer-live').classList.remove('hidden');
+  document.getElementById('log-live-badge').classList.remove('hidden');
+  document.getElementById('progress-stripe').classList.remove('hidden');
+  document.getElementById('cfg-svg').style.display = 'none';
+  document.getElementById('cfg-empty').style.display = 'flex';
+  document.getElementById('empty-state').classList.remove('hidden');
+  document.getElementById('stats-panel').classList.add('hidden');
+  setChip('RUNNING…', 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30');
+  setStage(0);
+
+  try {
+    let runId;
+
+    if (selectedSample) {
+      // Use built-in sample
+      const res  = await fetch('/api/analyze-sample', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: selectedSample, mode }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      runId = data.runId;
+    } else {
+      // Upload user file
+      const form = new FormData();
+      form.append('ssa', selectedFile);
+      form.append('mode', mode);
+      const res  = await fetch('/api/analyze', { method: 'POST', body: form });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      runId = data.runId;
+    }
+
+    // Open WS for live logs
+    ws = new WebSocket(`ws://${location.host}?runId=${runId}`);
+    ws.onmessage = e => {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'log') {
+        appendLog(msg.text, msg.logType, msg.time);
+        if (msg.logType === 'remove') currentRemoved++;
+      } else if (msg.type === 'stage') {
+        setStage(msg.stage);
+      } else if (msg.type === 'done') {
+        document.getElementById('footer-live').classList.add('hidden');
+        document.getElementById('log-live-badge').classList.add('hidden');
+        ws.close();
+        onDone(msg);
+      } else if (msg.type === 'error') {
+        appendLog(msg.message, 'error');
+        setChip('ERROR', 'text-red-400 bg-red-400/10 border-red-400/30');
+        document.getElementById('run-btn').disabled = false;
+        document.getElementById('footer-live').classList.add('hidden');
+      }
+    };
+    ws.onerror = () => {
+      appendLog('WebSocket connection failed', 'error');
+      setChip('ERROR', 'text-red-400 bg-red-400/10 border-red-400/30');
+      document.getElementById('run-btn').disabled = false;
+    };
+  } catch (err) {
+    appendLog(`Error: ${err.message}`, 'error');
+    setChip('ERROR', 'text-red-400 bg-red-400/10 border-red-400/30');
+    document.getElementById('run-btn').disabled = false;
+  }
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'fixed bottom-40 left-1/2 -translate-x-1/2 bg-surface border border-border-col text-sm px-4 py-2 rounded-lg shadow-xl z-50 font-mono fade-up';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2800);
+}
+</script>
+
+<!-- Template helpers (inline web components lite) -->
+<script>
+// Lightweight template for Info Cards (Model Info panel)
+function InfoCard(p) {}  // handled via literal HTML below
+function Row(p) {}
+</script>
+
+<script>
+// Inject info card HTML into Model Info panel
+document.addEventListener('DOMContentLoaded', () => {
+  // These are just static - already in the HTML above.
+  // Make sure mode radio init triggers
+  const mlRadio = document.querySelector('input[name="mode"][value="classical"]');
+  mlRadio?.closest('.mode-label')?.classList.add('border-primary/40','bg-primary/5');
+});
+</script>
+
+</body>
+</html>
