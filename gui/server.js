@@ -13,7 +13,7 @@ const server = http.createServer(app);
 const wss    = new WebSocketServer({ server });
 
 const ROOT    = path.resolve(__dirname, '..');   // /…/tmp  — where "idce" binary lives
-const BINARY  = path.join(ROOT, 'idce');
+const BINARY  = '/home/vyrion/test_idce'; // USING SAFE EXT4 COPY FOR NTFS WORKAROUND
 const RUNS_DIR = path.join(__dirname, 'runs');   // temp per-run dirs
 
 fs.mkdirSync(RUNS_DIR, { recursive: true });

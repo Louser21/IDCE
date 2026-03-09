@@ -23,4 +23,9 @@ gui_test/
 
 # ML data (large files)
 ml_data/processed/
+ml_data/raw/
 ml_data/*.pt
+
+# Analysis outputs
+analysis_report/
+out_*/
