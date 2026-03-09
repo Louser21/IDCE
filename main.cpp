@@ -2,15 +2,13 @@
 #include <vector>
 #include <string>
 #include <fstream>
-#include <filesystem> // Requires C++17
+#include <filesystem>
 #include "ir.h"
 
 namespace fs = std::filesystem;
 
 extern int yyparse();
-// Ensure the Global DCE function is declared
 void applyGlobalDCE(ProgramIR& prog);
-// Declare ML Feature Extractor
 void exportIRFeaturesToJSON(const ProgramIR& prog, const std::string& out_path);
 
 void export_to_dot(const ProgramIR& prog, const std::string& filepath) {
@@ -23,14 +21,13 @@ void export_to_dot(const ProgramIR& prog, const std::string& filepath) {
     for (const auto& func : prog.functions) {
         func_counter++;
         std::string cluster_id = "cluster_" + std::to_string(func_counter);
-        
+
         out << "  subgraph \"" << cluster_id << "\" {\n";
         out << "    label = \"" << func.name << "\";\n";
         out << "    style = dashed; color = blue;\n";
 
         for (const auto& block : func.blocks) {
             std::string node_id = "node_" + std::to_string(func_counter) + "_" + std::to_string(block.id);
-            // Color unreachable blocks if needed, but here we show optimized state
             out << "    " << node_id << " [label=\"BB " << block.id << "\\n";
             for (const auto& stmt : block.statements) {
                 std::string clean = stmt.text;
@@ -51,20 +48,18 @@ void export_to_dot(const ProgramIR& prog, const std::string& filepath) {
 }
 
 int main(int argc, char** argv) {
-    // Basic argument parsing
     bool ml_extract = false;
     bool ml_dce = false;
     std::string projectName = "analysis_report";
-    
+
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "--ml-extract") ml_extract = true;
         else if (arg == "--ml-dce") ml_dce = true;
-        else if (arg.find("--") == std::string::npos) projectName = arg; // Use as folder name
+        else if (arg.find("--") == std::string::npos) projectName = arg;
     }
-    
+
     if (yyparse() == 0) {
-        // If ML extraction is requested, we dump BEFORE running Classical DCE
         if (ml_extract) {
             if (!fs::exists(projectName)) fs::create_directory(projectName);
             exportIRFeaturesToJSON(program, projectName + "/ir_graph_features.json");
@@ -74,12 +69,12 @@ int main(int argc, char** argv) {
             std::cout << "[ML Pipeline] Starting ML Inference DCE Pass...\n";
             if (!fs::exists(projectName)) fs::create_directory(projectName);
             std::string tmp_graph = projectName + "/tmp_ir_graph.json";
-            std::string tmp_out = projectName + "/tmp_ml_preds.json";
-            
+            std::string tmp_out   = projectName + "/tmp_ml_preds.json";
+
             exportIRFeaturesToJSON(program, tmp_graph);
             std::string cmd = ". ml/.venv/bin/activate && python3 ml/inference.py " + tmp_graph + " ml_data/dce_model.pt > " + tmp_out;
             int ret = std::system(cmd.c_str());
-            
+
             if (ret != 0) {
                 std::cerr << "[ML Error] Inference script failed.\n";
             } else {
@@ -104,22 +99,18 @@ int main(int argc, char** argv) {
                 std::cout << "[ML Pipeline] Inference complete. Evaluated " << dead_ids.size() << " predicted dead instructions.\n";
             }
         } else {
-            // Apply Classical DCE
             applyGlobalDCE(program);
         }
 
-        // Dump POST-Optimization graph to use as Ground Truth for labels
         if (ml_extract) {
             exportIRFeaturesToJSON(program, projectName + "/ir_graph_optimized.json");
-            return 0; // Short circuit for dataset gen
+            return 0;
         }
 
-        // 1. Create Directory
         if (!fs::exists(projectName)) {
             fs::create_directory(projectName);
         }
 
-        // 2. Generate Summary Report
         std::ofstream report(projectName + "/summary.txt");
         report << "GIMPLE SSA ANALYSIS REPORT (OPTIMIZED)\n" << std::string(35, '=') << "\n";
         report << "Final number of reachable functions: " << program.functions.size() << "\n\n";
@@ -137,7 +128,6 @@ int main(int argc, char** argv) {
         }
         report.close();
 
-        // 3. Generate DOT file for visual verification
         export_to_dot(program, projectName + "/graph.dot");
 
         std::cout << "Analysis complete. Intermediate logs generated." << std::endl;

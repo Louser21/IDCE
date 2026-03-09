@@ -14,10 +14,10 @@ static int expect_function_sig = 0;
 
 [ \t\r\n]+          { /* skip whitespace */ }
 
-";; Function".* { 
-    expect_function_sig = 1; 
-    yylval.str = strdup(yytext); 
-    return FUNCTION_HEADER; 
+";; Function".* {
+    expect_function_sig = 1;
+    yylval.str = strdup(yytext);
+    return FUNCTION_HEADER;
 }
 
 "{"                 { return LBRACE; }
@@ -42,7 +42,7 @@ static int expect_function_sig = 0;
     return TEXT_LINE;
 }
 
-[a-zA-Z0-9_:*&<> ]+[ \t]*\([^)\n]*\)[ \t]* { 
+[a-zA-Z0-9_:*&<> ]+[ \t]*\([^)\n]*\)[ \t]* {
     if (expect_function_sig) {
         expect_function_sig = 0;
         yylval.str = strdup(yytext);

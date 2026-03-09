@@ -876,10 +876,10 @@ YY_RULE_SETUP
 case 2:
 YY_RULE_SETUP
 #line 17 "lexer.l"
-{ 
-    expect_function_sig = 1; 
-    yylval.str = strdup(yytext); 
-    return FUNCTION_HEADER; 
+{
+    expect_function_sig = 1;
+    yylval.str = strdup(yytext);
+    return FUNCTION_HEADER;
 }
 	YY_BREAK
 case 3:
@@ -926,7 +926,7 @@ YY_RULE_SETUP
 case 9:
 YY_RULE_SETUP
 #line 45 "lexer.l"
-{ 
+{
     if (expect_function_sig) {
         expect_function_sig = 0;
         yylval.str = strdup(yytext);

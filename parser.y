@@ -17,23 +17,14 @@ int stmt_counter = 0;
 int current_block_idx = -1;
 
 StmtType classify_statement(const std::string& text) {
-    // 1. Check for Assignment (Pure or Call-based)
     if (text.find('=') != std::string::npos) {
-        // If it contains '(', it's a function call result assignment, treat as CALL (Live)
-        if (text.find('(') != std::string::npos) return STMT_CALL; 
-        
-        // Pure SSA assignment (e.g., x_2 = 5;)
+        if (text.find('(') != std::string::npos) return STMT_CALL;
         return STMT_ASSIGN;
     }
-    
-    // 2. Control Flow & Side Effects
     if (text.find("return") != std::string::npos) return STMT_RETURN;
-    if (text.find("goto") != std::string::npos) return STMT_GOTO;
-    if (text.find("if") != std::string::npos) return STMT_COND;
-    
-    // 3. Fallback for pure function calls without '='
-    if (text.find('(') != std::string::npos) return STMT_CALL;
-
+    if (text.find("goto")   != std::string::npos) return STMT_GOTO;
+    if (text.find("if")     != std::string::npos) return STMT_COND;
+    if (text.find('(')      != std::string::npos) return STMT_CALL;
     return STMT_OTHER;
 }
 %}
@@ -55,16 +46,15 @@ StmtType classify_statement(const std::string& text) {
 
 program : noise functions ;
 
-/* Handles text before the first function header */
 noise
     : /* empty */
     | noise TEXT_LINE { free($2); }
-    | noise FUNCTION_SIG { free($2); } /* Catch signatures not preceded by ;; Function */
+    | noise FUNCTION_SIG { free($2); }
     ;
 
-functions 
-    : function 
-    | functions function 
+functions
+    : function
+    | functions function
     ;
 
 optional_lines
@@ -74,14 +64,13 @@ optional_lines
     ;
 
 function
-    : FUNCTION_HEADER 
+    : FUNCTION_HEADER
       {
           current_function = new FunctionIR();
-          // Temporary name until we get the SIG
           current_function->name = std::string($1);
           current_block_idx = -1;
       }
-      optional_lines FUNCTION_SIG 
+      optional_lines FUNCTION_SIG
       {
           current_function->name = std::string($4);
           free($1); free($4);
@@ -114,7 +103,7 @@ function_item
     : TEXT_LINE
       {
           Statement stmt;
-          stmt.id = stmt_counter++;
+          stmt.id   = stmt_counter++;
           stmt.text = std::string($1);
           stmt.type = classify_statement(stmt.text);
           if (current_block_idx == -1) current_function->preamble.push_back(stmt);
@@ -130,7 +119,7 @@ function_item
     | RETURN_STMT
       {
           Statement stmt;
-          stmt.id = stmt_counter++;
+          stmt.id   = stmt_counter++;
           stmt.text = std::string($1);
           stmt.type = STMT_RETURN;
           if (current_block_idx != -1) current_function->blocks[current_block_idx].statements.push_back(stmt);
@@ -139,7 +128,7 @@ function_item
     | GOTO_STMT
       {
           Statement stmt;
-          stmt.id = stmt_counter++;
+          stmt.id   = stmt_counter++;
           stmt.text = "goto <bb " + std::to_string($1) + ">;";
           stmt.type = STMT_GOTO;
           if (current_block_idx != -1) {

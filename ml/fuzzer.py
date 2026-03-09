@@ -33,7 +33,6 @@ def gen_assignment():
     return f"    {lhs} = {rhs};\n"
 
 def gen_dead_store():
-    # In SSA a dead store isn't a reassignment, just an unused assignment
     lhs = get_new_var()
     return f"    {lhs} = {rand_num()};\n"
 
@@ -47,15 +46,13 @@ def gen_call():
 
 def generate_function(name):
     global var_counter
-    var_counter = 0 # reset per function
-    
-    # C++ Parser expects ";; Function func_name (func_name, ...)" as the signature
+    var_counter = 0
+
     code = f";; Function {name} ({name})\n\n{name} () {{\n"
-    # Preamble declarations
     for i in range(1, 6):
         get_new_var()
         code += f"    int v_{i};\n"
-    
+
     blocks = random.randint(3, 7)
     for b in range(1, blocks + 1):
         code += f"  <bb {b}>:\n"
@@ -65,14 +62,13 @@ def generate_function(name):
             if c < 0.1: code += gen_dead_store()
             elif c < 0.2: code += gen_call()
             else: code += gen_assignment()
-        
-        # End of block branch
+
         if b < blocks:
             code += gen_if(blocks)
             code += f"    goto <bb {b+1}>;\n"
         else:
             code += f"    return {rand_existing_var()};\n"
-            
+
     code += "}\n\n"
     return code
 
@@ -80,7 +76,7 @@ def generate_program(filepath):
     code = generate_function("main")
     for i in range(random.randint(0, 2)):
         code += generate_function(f"func_{i}")
-        
+
     with open(filepath, 'w') as f:
         f.write(code)
 

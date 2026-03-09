@@ -87,27 +87,18 @@ int stmt_counter = 0;
 int current_block_idx = -1;
 
 StmtType classify_statement(const std::string& text) {
-    // 1. Check for Assignment (Pure or Call-based)
     if (text.find('=') != std::string::npos) {
-        // If it contains '(', it's a function call result assignment, treat as CALL (Live)
-        if (text.find('(') != std::string::npos) return STMT_CALL; 
-        
-        // Pure SSA assignment (e.g., x_2 = 5;)
+        if (text.find('(') != std::string::npos) return STMT_CALL;
         return STMT_ASSIGN;
     }
-    
-    // 2. Control Flow & Side Effects
     if (text.find("return") != std::string::npos) return STMT_RETURN;
-    if (text.find("goto") != std::string::npos) return STMT_GOTO;
-    if (text.find("if") != std::string::npos) return STMT_COND;
-    
-    // 3. Fallback for pure function calls without '='
-    if (text.find('(') != std::string::npos) return STMT_CALL;
-
+    if (text.find("goto")   != std::string::npos) return STMT_GOTO;
+    if (text.find("if")     != std::string::npos) return STMT_COND;
+    if (text.find('(')      != std::string::npos) return STMT_CALL;
     return STMT_OTHER;
 }
 
-#line 111 "parser.tab.c"
+#line 102 "parser.tab.c"
 
 # ifndef YY_CAST
 #  ifdef __cplusplus
@@ -542,8 +533,8 @@ static const yytype_int8 yytranslate[] =
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint8 yyrline[] =
 {
-       0,    56,    56,    60,    61,    62,    66,    67,    71,    72,
-      73,    78,    85,    77,   109,   110,   114,   124,   130,   139
+       0,    47,    47,    50,    51,    52,    56,    57,    61,    62,
+      63,    68,    74,    67,    98,    99,   103,   113,   119,   128
 };
 #endif
 
@@ -1113,51 +1104,50 @@ yyreduce:
   switch (yyn)
     {
   case 4: /* noise: noise TEXT_LINE  */
-#line 61 "parser.y"
+#line 51 "parser.y"
                       { free((yyvsp[0].str)); }
-#line 1119 "parser.tab.c"
+#line 1110 "parser.tab.c"
     break;
 
   case 5: /* noise: noise FUNCTION_SIG  */
-#line 62 "parser.y"
+#line 52 "parser.y"
                          { free((yyvsp[0].str)); }
-#line 1125 "parser.tab.c"
+#line 1116 "parser.tab.c"
     break;
 
   case 9: /* optional_lines: optional_lines TEXT_LINE  */
-#line 72 "parser.y"
+#line 62 "parser.y"
                                { free((yyvsp[0].str)); }
-#line 1131 "parser.tab.c"
+#line 1122 "parser.tab.c"
     break;
 
   case 10: /* optional_lines: optional_lines RETURN_STMT  */
-#line 73 "parser.y"
+#line 63 "parser.y"
                                  { free((yyvsp[0].str)); }
-#line 1137 "parser.tab.c"
+#line 1128 "parser.tab.c"
     break;
 
   case 11: /* $@1: %empty  */
-#line 78 "parser.y"
+#line 68 "parser.y"
       {
           current_function = new FunctionIR();
-          // Temporary name until we get the SIG
           current_function->name = std::string((yyvsp[0].str));
           current_block_idx = -1;
       }
-#line 1148 "parser.tab.c"
+#line 1138 "parser.tab.c"
     break;
 
   case 12: /* $@2: %empty  */
-#line 85 "parser.y"
+#line 74 "parser.y"
       {
           current_function->name = std::string((yyvsp[0].str));
           free((yyvsp[-3].str)); free((yyvsp[0].str));
       }
-#line 1157 "parser.tab.c"
+#line 1147 "parser.tab.c"
     break;
 
   case 13: /* function: FUNCTION_HEADER $@1 optional_lines FUNCTION_SIG $@2 optional_lines LBRACE function_items RBRACE  */
-#line 90 "parser.y"
+#line 79 "parser.y"
       {
           for (size_t i = 0; i < current_function->blocks.size(); ++i) {
               BasicBlock& block = current_function->blocks[i];
@@ -1174,51 +1164,51 @@ yyreduce:
           delete current_function;
           current_function = nullptr;
       }
-#line 1178 "parser.tab.c"
+#line 1168 "parser.tab.c"
     break;
 
   case 16: /* function_item: TEXT_LINE  */
-#line 115 "parser.y"
+#line 104 "parser.y"
       {
           Statement stmt;
-          stmt.id = stmt_counter++;
+          stmt.id   = stmt_counter++;
           stmt.text = std::string((yyvsp[0].str));
           stmt.type = classify_statement(stmt.text);
           if (current_block_idx == -1) current_function->preamble.push_back(stmt);
           else current_function->blocks[current_block_idx].statements.push_back(stmt);
           free((yyvsp[0].str));
       }
-#line 1192 "parser.tab.c"
+#line 1182 "parser.tab.c"
     break;
 
   case 17: /* function_item: BLOCK_HEADER  */
-#line 125 "parser.y"
+#line 114 "parser.y"
       {
           current_function->blocks.emplace_back();
           current_block_idx = current_function->blocks.size() - 1;
           current_function->blocks[current_block_idx].id = (yyvsp[0].num);
       }
-#line 1202 "parser.tab.c"
+#line 1192 "parser.tab.c"
     break;
 
   case 18: /* function_item: RETURN_STMT  */
-#line 131 "parser.y"
+#line 120 "parser.y"
       {
           Statement stmt;
-          stmt.id = stmt_counter++;
+          stmt.id   = stmt_counter++;
           stmt.text = std::string((yyvsp[0].str));
           stmt.type = STMT_RETURN;
           if (current_block_idx != -1) current_function->blocks[current_block_idx].statements.push_back(stmt);
           free((yyvsp[0].str));
       }
-#line 1215 "parser.tab.c"
+#line 1205 "parser.tab.c"
     break;
 
   case 19: /* function_item: GOTO_STMT  */
-#line 140 "parser.y"
+#line 129 "parser.y"
       {
           Statement stmt;
-          stmt.id = stmt_counter++;
+          stmt.id   = stmt_counter++;
           stmt.text = "goto <bb " + std::to_string((yyvsp[0].num)) + ">;";
           stmt.type = STMT_GOTO;
           if (current_block_idx != -1) {
@@ -1226,11 +1216,11 @@ yyreduce:
               current_function->blocks[current_block_idx].successors.push_back((yyvsp[0].num));
           }
       }
-#line 1230 "parser.tab.c"
+#line 1220 "parser.tab.c"
     break;
 
 
-#line 1234 "parser.tab.c"
+#line 1224 "parser.tab.c"
 
       default: break;
     }
@@ -1423,7 +1413,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 152 "parser.y"
+#line 141 "parser.y"
 
 
 void yyerror(const char *s) {
