@@ -1,4 +1,4 @@
-#include "../ir.h"
+#include "ir.h"
 #include <iostream>
 #include <fstream>
 #include <map>
@@ -9,6 +9,27 @@
 extern bool hasSideEffect(const Statement& stmt);
 extern std::string extractLHS(const std::string &text);
 extern std::set<std::string> extractRHS(const std::string &text);
+
+int get_first_stmt_id(const FunctionIR& func, int block_id, std::set<int>& visited) {
+    if (visited.count(block_id)) return -1;
+    visited.insert(block_id);
+    for (const auto& b : func.blocks) {
+        if (b.id == block_id) {
+            if (!b.statements.empty()) return b.statements[0].id;
+            for (int succ : b.successors) {
+                int tid = get_first_stmt_id(func, succ, visited);
+                if (tid != -1) return tid;
+            }
+            return -1;
+        }
+    }
+    return -1;
+}
+
+int get_first_stmt_id(const FunctionIR& func, int block_id) {
+    std::set<int> visited;
+    return get_first_stmt_id(func, block_id, visited);
+}
 
 std::string escapeJSON(const std::string& input) {
     std::string output;
@@ -44,6 +65,14 @@ void exportIRFeaturesToJSON(const ProgramIR& prog, const std::string& out_path) 
 
         bool first_node = true;
         std::map<std::string, std::vector<int>> def_chains;
+        std::map<std::string, int> use_counts;
+
+        for (const auto& block : func.blocks) {
+            for (const auto& stmt : block.statements) {
+                auto uses = extractRHS(stmt.text);
+                for (const auto& u : uses) use_counts[u]++;
+            }
+        }
 
         for (const auto& block : func.blocks) {
             for (const auto& stmt : block.statements) {
@@ -52,17 +81,40 @@ void exportIRFeaturesToJSON(const ProgramIR& prog, const std::string& out_path) 
 
                 int opcode = getOpcodeEmbedding(stmt.type);
                 bool side_effect = hasSideEffect(stmt);
+                
+                // New features for advanced patterns
+                bool after_terminal = false;
+                for (const auto& s : block.statements) {
+                    if (s.id == stmt.id) break;
+                    if (s.type == STMT_RETURN || s.type == STMT_GOTO) after_terminal = true;
+                }
 
                 std::string lhs = extractLHS(stmt.text);
+                auto rhs_set = extractRHS(stmt.text);
+                std::vector<std::string> rhs(rhs_set.begin(), rhs_set.end());
+
                 if (!lhs.empty()) {
                     def_chains[lhs].push_back(stmt.id);
                 }
+
+                int use_c = 0;
+                if (!lhs.empty()) use_c = use_counts[lhs];
 
                 out << "        {\n";
                 out << "          \"id\": " << stmt.id << ",\n";
                 out << "          \"block_id\": " << block.id << ",\n";
                 out << "          \"text\": \"" << escapeJSON(stmt.text) << "\",\n";
-                out << "          \"features\": [" << opcode << ", " << (side_effect ? 1 : 0) << "]\n";
+                out << "          \"lhs\": \"" << escapeJSON(lhs) << "\",\n";
+                out << "          \"rhs\": [";
+                for (size_t i=0; i<rhs.size(); ++i) {
+                    out << "\"" << escapeJSON(rhs[i]) << "\"" << (i<rhs.size()-1 ? ", " : "");
+                }
+                out << "],\n";
+                out << "          \"features\": [" 
+                    << opcode << ", " 
+                    << (side_effect ? 1 : 0) << ", " 
+                    << (after_terminal ? 1 : 0) << ", "
+                    << use_c << "]\n";
                 out << "        }";
             }
         }
@@ -95,13 +147,7 @@ void exportIRFeaturesToJSON(const ProgramIR& prog, const std::string& out_path) 
 
             if (last_stmt_id != -1) {
                 for (int succ_block_id : block.successors) {
-                    int target_stmt_id = -1;
-                    for (const auto& succ_block : func.blocks) {
-                        if (succ_block.id == succ_block_id && !succ_block.statements.empty()) {
-                            target_stmt_id = succ_block.statements[0].id;
-                            break;
-                        }
-                    }
+                    int target_stmt_id = get_first_stmt_id(func, succ_block_id);
                     if (target_stmt_id != -1) {
                         if (!first_edge) out << ",\n";
                         out << "        {\"source\": " << last_stmt_id << ", \"target\": " << target_stmt_id << ", \"type\": \"CFG_BRANCH\"}";

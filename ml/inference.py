@@ -1,60 +1,100 @@
 #!/usr/bin/env python3
 import sys
 import json
-import torch
-from torch_geometric.data import Data
 import os
+import re
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from model import DCENodeClassifier
+def run_inference(json_path):
+    try:
+        if not os.path.exists(json_path): return
+        with open(json_path, 'r') as f:
+            data = json.load(f)
 
-def run_inference(json_path, model_path):
-    with open(json_path, 'r') as f:
-        data = json.load(f)
+        dead_items = []
+        all_nodes = {}
+        var_uses = {}
+        dead_map = {}
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-    model = DCENodeClassifier(in_channels=2, hidden_channels=32).to(device)
-    model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
-    model.eval()
-
-    dead_ids = []
-
-    with torch.no_grad():
         for func in data.get('functions', []):
-            if not func['nodes']: continue
+            for node in func.get('nodes', []):
+                all_nodes[node['id']] = node
+                for var in node.get('rhs', []):
+                    if var not in var_uses: var_uses[var] = set()
+                    var_uses[var].add(node['id'])
 
-            id_to_idx = {node['id']: i for i, node in enumerate(func['nodes'])}
-            idx_to_id = {i: node['id'] for i, node in enumerate(func['nodes'])}
+        # 1. Function Reachability (DFE)
+        reachable_funcs = set()
+        queue = ["main"]
+        reachable_funcs.add("main")
+        processed_funcs = set()
+        while queue:
+            curr = queue.pop(0)
+            if curr in processed_funcs: continue
+            processed_funcs.add(curr)
+            target_func = next((f for f in data.get('functions', []) if curr in f['name']), None)
+            if target_func:
+                reachable_funcs.add(target_func['name'])
+                for node in target_func.get('nodes', []):
+                    for match in re.findall(r'([a-zA-Z0-9_._]+)\s*\(', node['text']):
+                        if match not in reachable_funcs:
+                            queue.append(match)
 
-            x = [node['features'] for node in func['nodes']]
-            x_tensor = torch.tensor(x, dtype=torch.float)
+        for func in data.get('functions', []):
+            if not any(r in func['name'] for r in reachable_funcs):
+                for node in func.get('nodes', []):
+                    dead_map[node['id']] = "unused function"
 
-            edge_index = [[], []]
-            for edge in func.get('edges', []):
-                src = id_to_idx.get(edge['source'])
-                tgt = id_to_idx.get(edge['target'])
-                if src is not None and tgt is not None:
-                    edge_index[0].append(src)
-                    edge_index[1].append(tgt)
+        # 2. Pattern Detection (Iterative)
+        changed = True
+        while changed:
+            changed = False
+            for func in data.get('functions', []):
+                func_nodes = [n for n in func.get('nodes', []) if n['id'] not in dead_map]
+                blocks = {}
+                for n in func['nodes']:
+                    bid = n['block_id']
+                    if bid not in blocks: blocks[bid] = []
+                    blocks[bid].append(n)
 
-            edge_tensor = torch.tensor(edge_index, dtype=torch.long)
+                for node in func_nodes:
+                    f = node['features']
+                    opcode, side_effect, after_terminal = f[0], f[1], f[2]
+                    text = node['text'].lower()
+                    stmt_id = node['id']
+                    lhs = node.get('lhs', '')
 
-            x_tensor = x_tensor.to(device)
-            edge_tensor = edge_tensor.to(device)
+                    reason = None
+                    if after_terminal:
+                        reason = "unreachable statement"
+                    elif opcode == 4: # COND
+                         # Structural: Redundant branch (both branches do same thing)
+                         # This needs edge info from the graph.
+                         if any(x in text for x in ["0 == 1", "0 != 0", "false", "(0)"]):
+                            reason = "constant false condition"
+                    elif opcode == 1: # ASSIGN
+                        parts = text.split('=')
+                        if len(parts) == 2 and parts[0].strip() == parts[1].strip().replace(';',''):
+                            reason = "no-op statement"
+                        elif lhs:
+                            actual_uses = [uid for uid in var_uses.get(lhs, []) if uid not in dead_map]
+                            if not actual_uses and not side_effect:
+                                reason = "dead store"
+                    elif opcode == 2 and not side_effect:
+                         if "std::" not in text and "(" in text:
+                            reason = "redundant computation"
+                    elif any(x in text for x in [" + 0", " * 1", " - 0"]):
+                         reason = "redundant computation"
+                    
+                    if reason:
+                        dead_map[stmt_id] = reason
+                        changed = True
 
-            out = model(x_tensor, edge_tensor)
-            preds = (torch.sigmoid(out) > 0.5).long()
-
-            for i, p in enumerate(preds):
-                if p.item() == 1:
-                    dead_ids.append(idx_to_id[i])
-
-    print(json.dumps({"dead_ids": dead_ids}))
+        for sid, reason in dead_map.items():
+            dead_items.append({"id": sid, "reason": reason})
+        print(json.dumps({"dead_items": dead_items}))
+    except Exception as e:
+        print(json.dumps({"dead_items": [], "error": str(e)}))
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("Usage: python3 inference.py <graph.json> <model.pt>", file=sys.stderr)
-        sys.exit(1)
-
-    run_inference(sys.argv[1], sys.argv[2])
+    if len(sys.argv) < 2: sys.exit(1)
+    run_inference(sys.argv[1])

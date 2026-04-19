@@ -11,6 +11,7 @@ enum StmtType {
     STMT_GOTO,
     STMT_RETURN,
     STMT_COND,
+    STMT_PHI,
     STMT_OTHER
 };
 
@@ -40,6 +41,8 @@ extern ProgramIR program;
 
 void applyGlobalDCE(ProgramIR& prog);
 
+int get_first_stmt_id(const FunctionIR& func, int block_id);
+
 bool hasSideEffect(const Statement& stmt);
 
 void applyDCE(ProgramIR& prog);
@@ -50,6 +53,11 @@ std::string extractLHS(const std::string& text);
 std::set<std::string> extractRHS(const std::string& text);
 std::string sanitizeVar(std::string var);
 
-void applyIntelligentDCE(ProgramIR& prog, const std::set<int>& dead_ids);
+#include <map>
+void applyIntelligentDCE(ProgramIR& prog, const std::map<int, std::string>& dead_reasons);
+
+void validate(const FunctionIR& func);
+void repair_ssa_uses(FunctionIR& func, const std::string& dead_var, const std::string& replacement = "undef");
+void fix_cfg_and_phis(FunctionIR& func, const std::set<int>& dead_blocks);
 
 #endif

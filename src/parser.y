@@ -17,6 +17,7 @@ int stmt_counter = 0;
 int current_block_idx = -1;
 
 StmtType classify_statement(const std::string& text) {
+    if (text.find("= PHI") != std::string::npos) return STMT_PHI;
     if (text.find('=') != std::string::npos) {
         if (text.find('(') != std::string::npos) return STMT_CALL;
         return STMT_ASSIGN;

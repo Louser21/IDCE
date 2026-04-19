@@ -1,7 +1,7 @@
 const express = require('express');
 const multer  = require('multer');
 const { WebSocketServer } = require('ws');
-const { spawn } = require('child_process');
+const { spawn, execSync } = require('child_process');
 const http  = require('http');
 const path  = require('path');
 const fs    = require('fs');
@@ -13,7 +13,7 @@ const server = http.createServer(app);
 const wss    = new WebSocketServer({ server });
 
 const ROOT    = path.resolve(__dirname, '..');   // /…/tmp  — where "idce" binary lives
-const BINARY  = '/home/vyrion/test_idce'; // USING SAFE EXT4 COPY FOR NTFS WORKAROUND
+const BINARY  = '/home/vyrion/tmp_build/idce'; // ext4 home build — NTFS can't exec
 const RUNS_DIR = path.join(__dirname, 'runs');   // temp per-run dirs
 
 fs.mkdirSync(RUNS_DIR, { recursive: true });
@@ -61,15 +61,40 @@ function parseSummary(txt) {
 }
 
 // ── Helper: run IDCE binary ────────────────────────────────────────────────
-async function runIDCE({ inputPath, mode, runId, outDir }) {
+
+async function cppToSsa(cppCode, runId) {
+  const tmpDir = path.join(os.tmpdir(), `cpp-${runId}`);
+  fs.mkdirSync(tmpDir, { recursive: true });
+  const cppFile = path.join(tmpDir, 'source.cpp');
+  fs.writeFileSync(cppFile, cppCode);
+  
+  try {
+    // Run GCC to dump SSA
+    execSync(`gcc -O0 -fdump-tree-ssa -c source.cpp`, { cwd: tmpDir });
+    const files = fs.readdirSync(tmpDir);
+    const ssaFileFound = files.find(f => f.endsWith('.ssa'));
+    if (!ssaFileFound) throw new Error("SSA dump not generated");
+    
+    const ssaContent = fs.readFileSync(path.join(tmpDir, ssaFileFound), 'utf8');
+    // Cleanup
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    return ssaContent;
+  } catch (err) {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    throw new Error("C++ Compilation failed: " + err.message);
+  }
+}
+
+async function runIDCE({ inputPath, mode, runId, outDir, originalSource }) {
   return new Promise((resolve, reject) => {
     const args = [outDir];
     if (mode === 'ml') args.push('--ml-dce');
 
     broadcast(runId, { type: 'stage', stage: 0 }); // Parse
 
+    const BINARY_DIR = '/home/vyrion/tmp_build';
     const proc = spawn(BINARY, args, {
-      cwd: ROOT,
+      cwd: BINARY_DIR,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
@@ -89,6 +114,7 @@ async function runIDCE({ inputPath, mode, runId, outDir }) {
         else if (line.includes('Warning') || line.includes('Vetoed')) logType = 'warn';
         else if (line.includes('ML')) logType = 'ml';
         else if (line.includes('SCCP') || line.includes('Folding')) logType = 'fold';
+        else if (line.includes('unused function') || line.includes('after terminal')) logType = 'remove';
         broadcast(runId, { type: 'log', text: line, logType, time: new Date().toLocaleTimeString('en-GB') });
       });
     });
@@ -107,16 +133,20 @@ async function runIDCE({ inputPath, mode, runId, outDir }) {
         return reject(new Error(stderr || 'IDCE exited with error'));
       }
 
-      // Read outputs
-      const dotPath     = path.join(ROOT, outDir, 'graph.dot');
-      const summaryPath = path.join(ROOT, outDir, 'summary.txt');
+      // Read outputs (binary runs from BINARY_DIR so outputs land there)
+      const bDir        = '/home/vyrion/tmp_build';
+      const dotPath     = path.join(bDir, outDir, 'graph.dot');
+      const summaryPath = path.join(bDir, outDir, 'summary.txt');
+      const optSsaPath  = path.join(bDir, outDir, 'optimized.ssa');
 
       const dot     = fs.existsSync(dotPath)     ? fs.readFileSync(dotPath, 'utf8')     : '';
       const summary = fs.existsSync(summaryPath) ? fs.readFileSync(summaryPath, 'utf8') : '';
+      const optSsa  = fs.existsSync(optSsaPath)  ? fs.readFileSync(optSsaPath, 'utf8')  : '';
+      const origSsa = fs.existsSync(inputPath)   ? fs.readFileSync(inputPath, 'utf8')   : '';
 
       broadcast(runId, { type: 'stage', stage: 3 }); // Export done
-      broadcast(runId, { type: 'done', dot, summary, stats: parseSummary(summary) });
-      resolve({ dot, summary, stats: parseSummary(summary) });
+      broadcast(runId, { type: 'done', dot, summary, optSsa, origSsa, stats: parseSummary(summary) });
+      resolve({ dot, summary, optSsa, origSsa, stats: parseSummary(summary) });
     });
   });
 }
@@ -171,6 +201,92 @@ app.get('/api/samples', (_req, res) => {
     res.json(files);
   } catch {
     res.json([]);
+  }
+});
+
+// ── API: /api/analyze-text — run using raw text from editor ───────────────
+app.post('/api/analyze-text', express.json(), async (req, res) => {
+  const { code, mode } = req.body;
+  if (!code || !code.trim()) return res.status(400).json({ error: 'Empty code' });
+
+  const runId  = crypto.randomBytes(6).toString('hex');
+  const outDir = `gui_run_${runId}`;
+  
+  res.json({ runId });
+  // Wait for client to connect
+  await new Promise(r => setTimeout(r, 500));
+
+  let finalSsa = code;
+  let isCpp = code.includes('main') || code.includes('#include');
+
+  if (isCpp) {
+    try {
+      broadcast(runId, { type: 'log', text: "[IDCE] Detected C++ code. Converting to SSA...", logType: 'info', time: new Date().toLocaleTimeString('en-GB') });
+      finalSsa = await cppToSsa(code, runId);
+      broadcast(runId, { type: 'log', text: "[IDCE] SSA Conversion complete.", logType: 'ml', time: new Date().toLocaleTimeString('en-GB') });
+    } catch (err) {
+      broadcast(runId, { type: 'error', message: err.message });
+      return; 
+    }
+  }
+
+  // Save text to a temp file
+  const tmpFile = path.join(os.tmpdir(), `editor-${runId}.ssa`);
+  fs.writeFileSync(tmpFile, finalSsa);
+  await new Promise(r => setTimeout(r, 300));
+
+  broadcast(runId, { type: 'log', text: `[IDCE] Starting ${mode === 'ml' ? 'ML-Guided' : 'Classical'} DCE...`, logType: 'info', time: new Date().toLocaleTimeString('en-GB') });
+  broadcast(runId, { type: 'log', text: `[IDCE] Input: Editor Code`, logType: 'info', time: new Date().toLocaleTimeString('en-GB') });
+  broadcast(runId, { type: 'stage', stage: 1 });
+
+  try {
+    await runIDCE({ inputPath: tmpFile, mode: mode || 'classical', runId, outDir, originalSource: code });
+    fs.unlink(tmpFile, () => {});
+    setTimeout(() => {
+      try { fs.rmSync(path.join(ROOT, outDir), { recursive: true, force: true }); } catch {}
+    }, 60_000);
+  } catch (err) {
+    broadcast(runId, { type: 'error', message: err.message });
+  }
+});
+
+// ── API: /api/compile-run — compile and execute C++ directly ──────────────
+const { spawnSync } = require('child_process');
+app.post('/api/compile-run', express.json(), async (req, res) => {
+  const { code } = req.body;
+  if (!code) return res.status(400).json({ error: 'No code provided' });
+
+  const tmpId = crypto.randomBytes(6).toString('hex');
+  const tmpCpp = path.join(os.tmpdir(), `test_exec_${tmpId}.cpp`);
+  fs.writeFileSync(tmpCpp, code);
+  
+  const pyScript = path.join(ROOT, 'idce_compiler.py');
+  
+  try {
+     // Run the python wrapper
+     const compileOut = execSync(`python3 ${pyScript} ${tmpCpp}`, { cwd: ROOT, encoding: 'utf8' });
+     
+     // Find the generated executable path from the script output
+     const match = compileOut.match(/Output Executable Generated -> (.*\.out)/);
+     if (!match) throw new Error("Could not find executable output path. Wrapper logs:\n" + compileOut);
+     const exePath = match[1].trim();
+     
+     // Run the executable
+     const runProc = spawnSync(exePath, [], { encoding: 'utf8', timeout: 5000 });
+     res.json({
+        stdout: runProc.stdout || '',
+        stderr: runProc.stderr || '',
+        returncode: runProc.status !== null ? runProc.status : -1
+     });
+     
+     // Cleanup
+     try { fs.unlinkSync(tmpCpp); } catch(e){}
+  } catch (err) {
+      res.json({
+         error: err.message,
+         stdout: err.stdout || '',
+         stderr: err.stderr || ''
+      });
   }
 });
 

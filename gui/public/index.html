@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>IDCE — ML-Assisted DCE Visualizer</title>
+<title>IDCE</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
@@ -115,7 +115,6 @@
   <div class="flex items-center gap-3">
     <span class="material-symbols-outlined text-primary text-xl">account_tree</span>
     <h1 class="text-sm font-bold tracking-widest uppercase opacity-80 font-mono">IDCE</h1>
-    <span class="hidden sm:block text-xs text-slate-500">— ML-Assisted Dead Code Elimination Visualizer</span>
   </div>
   <div class="flex items-center gap-3">
     <span id="status-chip" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-500 border border-border-col transition-all">IDLE</span>
@@ -133,6 +132,12 @@
     <nav class="p-3 space-y-1">
       <button data-panel="dashboard"  class="nav-btn nav-active w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-transparent text-sm font-medium transition-all">
         <span class="material-symbols-outlined text-[18px]">dashboard</span> Dashboard
+      </button>
+      <button data-panel="editor" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-transparent text-sm font-medium transition-all hover:bg-white/5 opacity-70 hover:opacity-100">
+        <span class="material-symbols-outlined text-[18px]">edit_document</span> Input Editor
+      </button>
+      <button data-panel="compare" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-transparent text-sm font-medium transition-all hover:bg-white/5 opacity-70 hover:opacity-100">
+        <span class="material-symbols-outlined text-[18px]">compare</span> Code Compare
       </button>
       <button data-panel="cfg" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-transparent text-sm font-medium transition-all hover:bg-white/5 opacity-70 hover:opacity-100">
         <span class="material-symbols-outlined text-[18px]">account_tree</span> CFG View
@@ -153,17 +158,21 @@
       <!-- File drop -->
       <section>
         <p class="text-[10px] font-bold uppercase tracking-widest mb-2 text-slate-500">Input Stream</p>
-        <div id="drop-zone"
-          class="border-2 border-dashed border-border-col rounded-lg p-5 flex flex-col items-center justify-center text-center gap-2 cursor-pointer transition-all hover:border-primary/50 group"
-          onclick="document.getElementById('file-input').click()">
-          <span class="material-symbols-outlined text-3xl text-slate-600 group-hover:text-primary transition-colors">upload_file</span>
-          <p class="text-xs font-medium text-slate-300">Drop <span class="text-primary font-mono">.ssa</span> file here</p>
-          <p class="text-[10px] text-slate-600">or click to browse</p>
-          <input type="file" id="file-input" accept=".ssa,.txt" class="hidden"/>
+        <div class="flex gap-2">
+            <button onclick="document.querySelector('.nav-btn[data-panel=\'editor\']').click()" 
+                    class="flex-1 py-2 rounded-lg bg-surface-2 border border-border-col text-xs font-medium hover:border-primary/50 hover:text-primary transition-all flex items-center justify-center gap-1">
+                <span class="material-symbols-outlined text-[16px]">edit</span> TYPE CODE
+            </button>
+            <button onclick="document.getElementById('file-input').click()" 
+                    class="flex-1 py-2 rounded-lg bg-surface-2 border border-border-col text-xs font-medium hover:border-primary/50 hover:text-primary transition-all flex items-center justify-center gap-1 group">
+                <span class="material-symbols-outlined text-[16px]">upload</span> UPLOAD FILE
+            </button>
         </div>
-        <!-- Chosen file indicator -->
-        <div id="file-badge" class="hidden mt-2 flex items-center gap-2 p-2 rounded bg-primary/5 border border-primary/20">
-          <span class="material-symbols-outlined text-primary text-sm">description</span>
+        <input type="file" id="file-input" accept=".ssa,.txt" class="hidden"/>
+        
+        <!-- Chosen source indicator -->
+        <div id="file-badge" class="hidden mt-3 flex items-center gap-2 p-2 rounded bg-primary/5 border border-primary/20">
+          <span class="material-symbols-outlined text-primary text-sm" id="source-icon">description</span>
           <span id="file-name" class="text-xs font-mono text-primary truncate flex-1"></span>
           <button onclick="clearFile()" class="text-slate-500 hover:text-red-400 transition-colors">
             <span class="material-symbols-outlined text-sm">close</span>
@@ -262,7 +271,7 @@
           <div>
             <h2 class="text-2xl font-bold tracking-tight">Ready to Analyze</h2>
             <p class="text-slate-500 text-sm mt-2 leading-relaxed">
-              Upload a <span class="font-mono text-primary">.ssa</span> file or pick a sample,<br/>
+              Open the <strong class="text-primary">Input Editor</strong>, upload a <span class="font-mono text-primary">.ssa</span> file or pick a sample,<br/>
               choose Classical or ML-Guided DCE, then hit <strong class="text-primary">Run Analysis</strong>.
             </p>
           </div>
@@ -304,7 +313,69 @@
             </div>
             <pre id="summary-text" class="font-mono text-[11px] text-slate-400 leading-relaxed overflow-x-auto scr whitespace-pre-wrap max-h-48 scr overflow-y-auto"></pre>
           </div>
+          
+          <!-- Executable Output (Only for C++) -->
+          <div id="executable-panel" class="hidden mt-6 p-4 rounded-xl bg-surface border border-border-col">
+            <div class="flex items-center justify-between mb-2">
+              <p class="text-xs font-bold uppercase tracking-widest text-primary">Compiler Output Verification</p>
+              <button id="run-exec-btn" onclick="runOptimizedExecutable()" class="px-3 py-1 rounded bg-primary text-background-dark font-bold text-xs hover:brightness-110 flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm">terminal</span> TEST COMPILED BINARY
+              </button>
+            </div>
+            <pre id="executable-output" class="font-mono text-[11px] text-slate-300 leading-relaxed overflow-x-auto scr whitespace-pre-wrap min-h-16 scr overflow-y-auto bg-background-dark p-3 rounded border border-border-col">Click "Test Compiled Binary" to execute.</pre>
+          </div>
         </div>
+      </div>
+
+      <!-- ======  EDITOR PANEL  ====== -->
+      <div id="panel-editor" class="panel hidden absolute inset-0 flex flex-col">
+          <div class="flex items-center justify-between px-4 py-2 border-b border-border-col bg-surface/60 shrink-0">
+            <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Interactive SSA Editor</span>
+            <button onclick="useEditorCode()" class="px-3 py-1 rounded bg-primary/20 text-primary border border-primary/30 text-[10px] font-bold tracking-wide hover:bg-primary/30 transition-colors">USE THIS CODE</button>
+          </div>
+          <textarea id="ssa-editor" class="flex-1 w-full p-4 bg-transparent resize-none border-none outline-none text-slate-300 font-mono text-sm leading-relaxed scr" spellcheck="false" placeholder="// Type your C++ code here...
+// It will be automatically converted to SSA for analysis.">#include <iostream>
+
+int main() {
+    int x = 1;
+    int y = 2;
+    
+    if (x == 0) {
+        // Dead block
+        std::cout << "This will be removed" << std::endl;
+        y = 500;
+    } else {
+        y = 100;
+    }
+    
+    return y;
+}</textarea>
+      </div>
+
+      <!-- ======  COMPARE PANEL  ====== -->
+      <div id="panel-compare" class="panel hidden absolute inset-0 flex flex-col">
+          <div class="flex items-center justify-between px-4 py-2 border-b border-border-col bg-surface/60 shrink-0">
+            <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Side-by-Side Comparison</span>
+            <button onclick="downloadOptimized()" class="ml-2 text-[10px] font-mono text-primary hover:underline flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm">download</span> optimized.ssa
+            </button>
+          </div>
+          <div class="flex-1 flex overflow-hidden">
+              <div class="flex-1 border-r border-border-col flex flex-col">
+                  <div class="px-3 py-1.5 bg-surface/40 text-[10px] font-mono text-slate-500 border-b border-border-col shrink-0 flex justify-between">
+                      <span>ORIGINAL SSA</span>
+                      <span id="compare-orig-lines">0 lines</span>
+                  </div>
+                  <pre id="compare-orig" class="flex-1 p-4 font-mono text-xs text-slate-400 overflow-auto scr w-full whitespace-pre wrap"><span class="italic text-slate-600">Run analysis to compare...</span></pre>
+              </div>
+              <div class="flex-1 flex flex-col relative">
+                  <div class="px-3 py-1.5 bg-primary/5 text-[10px] font-mono text-primary border-b border-border-col shrink-0 flex justify-between">
+                      <span>OPTIMIZED SSA (Dead Code Removed)</span>
+                      <span id="compare-opt-lines">0 lines</span>
+                  </div>
+                  <pre id="compare-opt" class="flex-1 p-4 font-mono text-xs text-slate-200 overflow-auto scr w-full whitespace-pre wrap relative"><span class="italic text-slate-600">Run analysis to compare...</span></pre>
+              </div>
+          </div>
       </div>
 
       <!-- ======  CFG VIEW PANEL  ====== -->
@@ -450,9 +521,11 @@
 // ── State ──────────────────────────────────────────────────────────────────
 let selectedFile = null;
 let selectedSample = null;
+let editorCodeInUse = false;
 let currentDot = '';
 let currentSummary = '';
 let currentRemoved = 0;
+let currentOptSsa = '';
 let cfgScale = 1;
 let ws = null;
 let logLines = [];
@@ -487,24 +560,30 @@ document.querySelectorAll('input[name="mode"]').forEach(radio => {
 
 // ── File input ─────────────────────────────────────────────────────────────
 const fileInput = document.getElementById('file-input');
-const dropZone  = document.getElementById('drop-zone');
 
 fileInput.addEventListener('change', e => {
   if (e.target.files[0]) setFile(e.target.files[0]);
 });
 
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-dropZone.addEventListener('drop', e => {
-  e.preventDefault();
-  dropZone.classList.remove('drag-over');
-  if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
-});
+function useEditorCode() {
+    const code = document.getElementById('ssa-editor').value.trim();
+    if (!code) { showToast('Editor is empty'); return; }
+    selectedFile = null;
+    selectedSample = null;
+    editorCodeInUse = true;
+    document.getElementById('file-badge').classList.remove('hidden');
+    document.getElementById('source-icon').textContent = 'edit_document';
+    document.getElementById('file-name').textContent = "Editor Content";
+    document.querySelectorAll('.sample-btn').forEach(b => b.classList.remove('bg-primary/10','text-primary','border-primary/30'));
+    showToast('Using code from editor');
+}
 
 function setFile(f) {
   selectedFile = f;
   selectedSample = null;
+  editorCodeInUse = false;
   document.getElementById('file-badge').classList.remove('hidden');
+  document.getElementById('source-icon').textContent = 'description';
   document.getElementById('file-name').textContent = f.name;
   document.querySelectorAll('.sample-btn').forEach(b => b.classList.remove('bg-primary/10','text-primary','border-primary/30'));
 }
@@ -532,8 +611,11 @@ async function loadSamples() {
       btn.addEventListener('click', () => {
         selectedSample = btn.dataset.name;
         selectedFile = null;
+        editorCodeInUse = false;
         fileInput.value = '';
-        document.getElementById('file-badge').classList.add('hidden');
+        document.getElementById('file-badge').classList.remove('hidden');
+        document.getElementById('source-icon').textContent = 'library_books';
+        document.getElementById('file-name').textContent = `Sample: ${selectedSample}`;
         document.querySelectorAll('.sample-btn').forEach(b => b.classList.remove('bg-primary/10','text-primary','border-primary/30'));
         btn.classList.add('bg-primary/10','text-primary','border-primary/30');
       });
@@ -678,10 +760,20 @@ function downloadSummary() {
   a.click();
 }
 
+function downloadOptimized() {
+    if (!currentOptSsa) return;
+    const a = document.createElement('a');
+    a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(currentOptSsa);
+    a.download = 'optimized.ssa';
+    a.click();
+}
+
 // ── On analysis done ───────────────────────────────────────────────────────
 function onDone(data) {
   currentDot     = data.dot     || '';
   currentSummary = data.summary || '';
+  currentOptSsa  = data.optSsa  || '';
+  const origSsa  = data.origSsa || '';
   const stats    = data.stats   || {};
 
   // Update stats panel
@@ -694,6 +786,39 @@ function onDone(data) {
   document.getElementById('stat-stmts').textContent  = stats.liveStmts ?? '—';
   document.getElementById('stat-removed').textContent = currentRemoved;
   document.getElementById('summary-text').textContent = currentSummary;
+
+  // Update Compare Panel
+  const compareOrig = document.getElementById('compare-orig');
+  const compareOpt = document.getElementById('compare-opt');
+  if (origSsa) {
+      compareOrig.textContent = origSsa;
+      document.getElementById('compare-orig-lines').textContent = `${origSsa.split('\\n').length} lines`;
+  } else if (editorCodeInUse) {
+      compareOrig.textContent = document.getElementById('ssa-editor').value;
+      document.getElementById('compare-orig-lines').textContent = `${document.getElementById('ssa-editor').value.split('\\n').length} lines`;
+  } else {
+      compareOrig.innerHTML = '<span class="italic text-slate-600">Not available</span>';
+  }
+
+  // Toggle Executable panel
+  const execPanel = document.getElementById('executable-panel');
+  if (data.isCpp) {
+      execPanel.classList.remove('hidden');
+      document.getElementById('executable-output').textContent = "Click \"Test Compiled Binary\" to execute.";
+      window.currentCppCode = editorCodeInUse ? document.getElementById('ssa-editor').value : "";
+  } else {
+      execPanel.classList.add('hidden');
+      window.currentCppCode = "";
+  }
+  
+  if (currentOptSsa) {
+      // Very basic diff highlight - just show optimized in grey, and anything that looks like code brightly
+      const htmlOpt = currentOptSsa.replace(/^(?!\\s*goto|<bb)(.*)$/gm, '<span class="text-primary glow">$1</span>');
+      compareOpt.innerHTML = htmlOpt;
+      document.getElementById('compare-opt-lines').textContent = `${currentOptSsa.split('\\n').length} lines`;
+  } else {
+      compareOpt.innerHTML = '<span class="italic text-slate-600">Not available</span>';
+  }
 
   // Progress done
   const bar = document.getElementById('progress-bar');
@@ -721,8 +846,8 @@ function onDone(data) {
 
 // ── Main analysis runner ───────────────────────────────────────────────────
 async function startAnalysis() {
-  if (!selectedFile && !selectedSample) {
-    showToast('⚠️ Please upload a file or select a sample first.'); return;
+  if (!selectedFile && !selectedSample && !editorCodeInUse) {
+    showToast('⚠️ Please upload a file, select a sample, or use the editor code.'); return;
   }
 
   const mode = document.querySelector('input[name="mode"]:checked')?.value || 'classical';
@@ -748,6 +873,17 @@ async function startAnalysis() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: selectedSample, mode }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      runId = data.runId;
+    } else if (editorCodeInUse) {
+      // Use editor raw text
+      const code = document.getElementById('ssa-editor').value;
+      const res  = await fetch('/api/analyze-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, mode }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -803,6 +939,42 @@ function showToast(msg) {
   t.textContent = msg;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 2800);
+}
+
+// ── Run Executable ────────────────────────────────────────────────────────
+async function runOptimizedExecutable() {
+    if (!window.currentCppCode) {
+        showToast("Error: Only original C++ Editor Code can be compiled & executed.");
+        return;
+    }
+    const outPre = document.getElementById('executable-output');
+    outPre.textContent = "Compiling and Executing with IDCE LLVM Wrapper...\n";
+    document.getElementById('run-exec-btn').disabled = true;
+
+    try {
+        const res = await fetch('/api/compile-run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: window.currentCppCode })
+        });
+        const data = await res.json();
+        
+        if (data.error) {
+            outPre.textContent += `[Error]\n${data.error}\n\n[Stderr]\n${data.stderr || ''}`;
+            outPre.style.color = '#f87171'; // red
+        } else {
+            outPre.textContent += `[Execution Output - Exit Code ${data.returncode}]\n---------------------------------------\n${data.stdout}\n`;
+            outPre.style.color = '#00ff88'; // primary glow
+            if (data.stderr) {
+                outPre.textContent += `\n[Stderr]\n${data.stderr}`;
+            }
+        }
+    } catch (e) {
+        outPre.textContent += `Failed to connect: ${e.message}`;
+        outPre.style.color = '#f87171';
+    } finally {
+        document.getElementById('run-exec-btn').disabled = false;
+    }
 }
 </script>
 

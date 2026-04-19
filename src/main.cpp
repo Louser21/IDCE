@@ -10,9 +10,31 @@ namespace fs = std::filesystem;
 extern int yyparse();
 void applyGlobalDCE(ProgramIR& prog);
 void exportIRFeaturesToJSON(const ProgramIR& prog, const std::string& out_path);
+#include <map>
+void applyIntelligentDCE(ProgramIR& prog, const std::map<int, std::string>& dead_reasons);
+
+void export_to_ssa(const ProgramIR& prog, const std::string& filepath) {
+    std::ofstream out(filepath);
+    for (const auto& func : prog.functions) {
+        out << func.name << "\n";
+        for (const auto& stmt : func.preamble) {
+            out << "  " << stmt.text << "\n";
+        }
+        for (const auto& block : func.blocks) {
+            out << "<bb " << block.id << ">:\n";
+            for (const auto& stmt : block.statements) {
+                if (stmt.text.find("// Folded") != std::string::npos) continue;
+                out << "  " << stmt.text << "\n";
+            }
+        }
+        out << "\n";
+    }
+}
 
 void export_to_dot(const ProgramIR& prog, const std::string& filepath) {
     std::ofstream out(filepath);
+
+    
     out << "digraph G {\n";
     out << "  node [shape=box, fontname=\"Courier\", style=filled, fillcolor=white];\n";
     out << "  compound=true;\n";
@@ -48,6 +70,7 @@ void export_to_dot(const ProgramIR& prog, const std::string& filepath) {
 }
 
 int main(int argc, char** argv) {
+    std::cerr << "ENTERED MAIN\n";
     bool ml_extract = false;
     bool ml_dce = false;
     std::string projectName = "analysis_report";
@@ -80,23 +103,33 @@ int main(int argc, char** argv) {
             } else {
                 std::ifstream ifs(tmp_out);
                 std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
-                std::set<int> dead_ids;
-                size_t p = content.find('[');
-                if (p != std::string::npos) {
-                    p++;
-                    while (p < content.size() && content[p] != ']') {
-                        if (isdigit(content[p])) {
-                            size_t end;
-                            int id = std::stoi(content.substr(p), &end);
-                            dead_ids.insert(id);
-                            p += end;
-                        } else {
-                            p++;
+                std::map<int, std::string> dead_map;
+                
+                // Simple parser for {"dead_items": [{"id": ID, "reason": "REASON"}, ...]}
+                size_t pos = 0;
+                while ((pos = content.find("\"id\":", pos)) != std::string::npos) {
+                    pos += 5;
+                    while (pos < content.size() && !isdigit(content[pos])) pos++;
+                    size_t end_id;
+                    int id = std::stoi(content.substr(pos), &end_id);
+                    pos += end_id;
+                    
+                    size_t r_pos = content.find("\"reason\":", pos);
+                    if (r_pos != std::string::npos) {
+                        r_pos = content.find("\"", r_pos + 9);
+                        if (r_pos != std::string::npos) {
+                            r_pos++;
+                            size_t r_end = content.find("\"", r_pos);
+                            if (r_end != std::string::npos) {
+                                std::string reason = content.substr(r_pos, r_end - r_pos);
+                                dead_map[id] = reason;
+                                pos = r_end;
+                            }
                         }
                     }
                 }
-                applyIntelligentDCE(program, dead_ids);
-                std::cout << "[ML Pipeline] Inference complete. Evaluated " << dead_ids.size() << " predicted dead instructions.\n";
+                applyIntelligentDCE(program, dead_map);
+                std::cout << "[ML Pipeline] Inference complete. Evaluated " << dead_map.size() << " predicted dead instructions.\n";
             }
         } else {
             applyGlobalDCE(program);
@@ -129,6 +162,7 @@ int main(int argc, char** argv) {
         report.close();
 
         export_to_dot(program, projectName + "/graph.dot");
+        export_to_ssa(program, projectName + "/optimized.ssa");
 
         std::cout << "Analysis complete. Intermediate logs generated." << std::endl;
         std::cout << "Files generated in folder: ./" << projectName << std::endl;
