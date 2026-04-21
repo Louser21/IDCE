@@ -73,12 +73,20 @@ int main(int argc, char** argv) {
     std::cerr << "ENTERED MAIN\n";
     bool ml_extract = false;
     bool ml_dce = false;
+    double ml_threshold = 0.6;   // confidence threshold for ML dead-code removal
     std::string projectName = "analysis_report";
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "--ml-extract") ml_extract = true;
         else if (arg == "--ml-dce") ml_dce = true;
+        else if (arg.rfind("--ml-threshold", 0) == 0) {
+            // Accept --ml-threshold=0.7 or --ml-threshold 0.7
+            if (arg.find('=') != std::string::npos)
+                ml_threshold = std::stod(arg.substr(arg.find('=') + 1));
+            else if (i + 1 < argc)
+                ml_threshold = std::stod(argv[++i]);
+        }
         else if (arg.find("--") == std::string::npos) projectName = arg;
     }
 
@@ -89,47 +97,150 @@ int main(int argc, char** argv) {
         }
 
         if (ml_dce && !ml_extract) {
-            std::cout << "[ML Pipeline] Starting ML Inference DCE Pass...\n";
+            std::cout << "[ML Pipeline] Starting ML Inference DCE Pass (threshold=" << ml_threshold << ")...\n";
             if (!fs::exists(projectName)) fs::create_directory(projectName);
             std::string tmp_graph = projectName + "/tmp_ir_graph.json";
             std::string tmp_out   = projectName + "/tmp_ml_preds.json";
 
             exportIRFeaturesToJSON(program, tmp_graph);
-            std::string cmd = ". ml/.venv/bin/activate && python3 ml/inference.py " + tmp_graph + " ml_data/dce_model.pt > " + tmp_out;
+
+            // NTFS-safe: use ext4 venv at /home/vyrion/.idce_venv
+            // Pass threshold + model path explicitly
+            std::string cmd =
+                "/home/vyrion/.idce_venv/bin/python3 ml/inference.py "
+                + tmp_graph
+                + " ml_data/dce_model.pt"
+                + " --threshold " + std::to_string(ml_threshold)
+                + " > " + tmp_out + " 2>/dev/null";
             int ret = std::system(cmd.c_str());
 
             if (ret != 0) {
-                std::cerr << "[ML Error] Inference script failed.\n";
-            } else {
+                std::cerr << "[ML Error] Inference script failed (exit " << ret << ").\n";
+                std::cerr << "[ML Fallback] Running heuristic pass instead.\n";
+                // Re-run without model (heuristic path inside inference.py)
+                std::string fb_cmd =
+                    "/home/vyrion/.idce_venv/bin/python3 ml/inference.py "
+                    + tmp_graph
+                    + " /dev/null"
+                    + " --threshold " + std::to_string(ml_threshold)
+                    + " > " + tmp_out + " 2>/dev/null";
+                ret = std::system(fb_cmd.c_str());
+            }
+
+            if (ret == 0) {
                 std::ifstream ifs(tmp_out);
-                std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
+                std::string content((std::istreambuf_iterator<char>(ifs)),
+                                    (std::istreambuf_iterator<char>()));
                 std::map<int, std::string> dead_map;
-                
-                // Simple parser for {"dead_items": [{"id": ID, "reason": "REASON"}, ...]}
+
+                // ── Parse dead_items ────────────────────────────────────────
+                // Format: {"id": N, "reason": "...", "confidence": F,
+                //          "source": "...", "top_influencers": [...]}
                 size_t pos = 0;
                 while ((pos = content.find("\"id\":", pos)) != std::string::npos) {
                     pos += 5;
                     while (pos < content.size() && !isdigit(content[pos])) pos++;
-                    size_t end_id;
+                    if (pos >= content.size()) break;
+                    size_t end_id = 0;
                     int id = std::stoi(content.substr(pos), &end_id);
                     pos += end_id;
-                    
+
+                    // reason
+                    std::string reason = "dead code (ml)";
                     size_t r_pos = content.find("\"reason\":", pos);
-                    if (r_pos != std::string::npos) {
-                        r_pos = content.find("\"", r_pos + 9);
+                    if (r_pos != std::string::npos && r_pos < pos + 200) {
+                        r_pos = content.find('"', r_pos + 9);
                         if (r_pos != std::string::npos) {
-                            r_pos++;
-                            size_t r_end = content.find("\"", r_pos);
-                            if (r_end != std::string::npos) {
-                                std::string reason = content.substr(r_pos, r_end - r_pos);
-                                dead_map[id] = reason;
-                                pos = r_end;
-                            }
+                            ++r_pos;
+                            size_t r_end = content.find('"', r_pos);
+                            if (r_end != std::string::npos)
+                                reason = content.substr(r_pos, r_end - r_pos);
+                        }
+                    }
+
+                    // confidence (for logging)
+                    double conf = 1.0;
+                    size_t c_pos = content.find("\"confidence\":", pos);
+                    if (c_pos != std::string::npos && c_pos < pos + 300) {
+                        c_pos += 14;
+                        while (c_pos < content.size() &&
+                               !isdigit(content[c_pos]) && content[c_pos] != '.') ++c_pos;
+                        try { conf = std::stod(content.substr(c_pos)); } catch (...) {}
+                    }
+
+                    // source
+                    std::string src = "gnn";
+                    size_t s_pos = content.find("\"source\":", pos);
+                    if (s_pos != std::string::npos && s_pos < pos + 400) {
+                        s_pos = content.find('"', s_pos + 9);
+                        if (s_pos != std::string::npos) {
+                            ++s_pos;
+                            size_t s_end = content.find('"', s_pos);
+                            if (s_end != std::string::npos)
+                                src = content.substr(s_pos, s_end - s_pos);
+                        }
+                    }
+
+                    std::string tag = (src == "gnn") ? "[ML GNN]" :
+                                      (src == "heuristic") ? "[Heuristic]" : "[Fallback]";
+                    std::cout << tag << " conf=" << conf << " " << reason
+                              << " (id=" << id << ")\n";
+                    dead_map[id] = reason + " [" + src + " conf=" + std::to_string(conf) + "]";
+                }
+
+                // ── Parse uncertainty_nodes (deferred — skip removal) ───────
+                size_t u_pos = content.find("\"uncertainty_nodes\":");
+                if (u_pos != std::string::npos) {
+                    u_pos = content.find('[', u_pos);
+                    size_t u_end = (u_pos != std::string::npos) ? content.find(']', u_pos) : std::string::npos;
+                    if (u_pos != std::string::npos && u_end != std::string::npos) {
+                        std::string u_seg = content.substr(u_pos + 1, u_end - u_pos - 1);
+                        // Extract numbers
+                        size_t up = 0;
+                        while (up < u_seg.size()) {
+                            while (up < u_seg.size() && !isdigit(u_seg[up])) ++up;
+                            if (up >= u_seg.size()) break;
+                            size_t ue = 0;
+                            int uid = std::stoi(u_seg.substr(up), &ue);
+                            up += ue;
+                            std::cout << "[ML UNCERTAIN] Node " << uid
+                                      << " deferred (confidence 0.50–" << ml_threshold << ")\n";
                         }
                     }
                 }
+
+                size_t p_pos = content.find("\"node_probabilities\":");
+                if (p_pos != std::string::npos) {
+                    p_pos = content.find('[', p_pos);
+                    size_t p_end = (p_pos != std::string::npos) ? content.find(']', p_pos) : std::string::npos;
+                    if (p_pos != std::string::npos && p_end != std::string::npos) {
+                        std::string p_seg = content.substr(p_pos + 1, p_end - p_pos - 1);
+                        size_t pp = 0;
+                        while ((pp = p_seg.find("\"nodeID\":", pp)) != std::string::npos) {
+                            pp += 9;
+                            while (pp < p_seg.size() && !isdigit(p_seg[pp])) pp++;
+                            if (pp >= p_seg.size()) break;
+                            size_t pe = 0;
+                            int pid = std::stoi(p_seg.substr(pp), &pe);
+                            pp += pe;
+
+                            double pconf = 0.0;
+                            size_t cpos = p_seg.find("\"prob\":", pp);
+                            if (cpos != std::string::npos) {
+                                cpos += 7;
+                                while (cpos < p_seg.size() && !isdigit(p_seg[cpos]) && p_seg[cpos] != '.') cpos++;
+                                try { pconf = std::stod(p_seg.substr(cpos)); } catch (...) {}
+                            }
+                            std::cout << "[ML PROBABILITY] Node id=" << pid << " calculated as " << pconf << "\n";
+                        }
+                    }
+                }
+
                 applyIntelligentDCE(program, dead_map);
-                std::cout << "[ML Pipeline] Inference complete. Evaluated " << dead_map.size() << " predicted dead instructions.\n";
+                std::cout << "[ML Pipeline] Inference complete. "
+                          << dead_map.size() << " dead instructions removed.\n";
+            } else {
+                std::cerr << "[ML Error] Both ML and fallback passes failed.\n";
             }
         } else {
             applyGlobalDCE(program);

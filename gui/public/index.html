@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html class="dark" lang="en">
+<html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
@@ -15,12 +15,12 @@
     theme: {
       extend: {
         colors: {
-          "primary":          "#00ff88",
-          "primary-dim":      "rgba(0,255,136,0.15)",
-          "background-dark":  "#0d1117",
-          "surface":          "#161b22",
-          "surface-2":        "#1c2128",
-          "border-col":       "#30363d",
+          "primary":          "#0f172a",
+          "primary-dim":      "rgba(15,23,42,0.05)",
+          "background-dark":  "#ffffff",
+          "surface":          "#f8fafc",
+          "surface-2":        "#f1f5f9",
+          "border-col":       "#e2e8f0",
         },
         fontFamily: {
           "display": ["Inter","sans-serif"],
@@ -47,11 +47,11 @@
   .scr::-webkit-scrollbar-thumb:hover { background:#00ff88; }
 
   /* Glow */
-  .glow { box-shadow: var(--glow); }
+  .glow { box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); }
 
   /* Dot-grid bg */
   .dot-grid {
-    background-image: radial-gradient(#00ff88 1px, transparent 1px);
+    background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
     background-size: 26px 26px;
     opacity: .04;
   }
@@ -59,25 +59,25 @@
   /* CFG SVG styling */
   #cfg-svg svg { width:100% !important; height:100% !important; }
   #cfg-svg svg g.node rect,
-  #cfg-svg svg g.node polygon { fill:#161b22 !important; stroke:#30363d !important; stroke-width:1.5 !important; rx:6 !important; }
-  #cfg-svg svg g.node text { fill:#e2e8f0 !important; font-family:'JetBrains Mono',monospace !important; font-size:11px !important; }
-  #cfg-svg svg g.edge path { stroke:#00ff88 !important; stroke-width:1.5 !important; marker-end:url(#arrow-green) !important; }
-  #cfg-svg svg g.edge polygon { fill:#00ff88 !important; stroke:#00ff88 !important; }
-  #cfg-svg svg g.graph polygon { fill:#0d1117 !important; stroke:none !important; }
-  #cfg-svg svg g.cluster rect { fill:transparent !important; stroke:#00ff88 !important; stroke-width:1 !important; stroke-dasharray:5,3 !important; }
-  #cfg-svg svg g.cluster text { fill:#00ff88 !important; font-family:'JetBrains Mono',monospace !important; font-size:11px !important; }
+  #cfg-svg svg g.node polygon { fill:#ffffff !important; stroke:#94a3b8 !important; stroke-width:1.5 !important; rx:6 !important; }
+  #cfg-svg svg g.node text { fill:#334155 !important; font-family:'JetBrains Mono',monospace !important; font-size:11px !important; }
+  #cfg-svg svg g.edge path { stroke:#334155 !important; stroke-width:1.5 !important; marker-end:url(#arrow-green) !important; }
+  #cfg-svg svg g.edge polygon { fill:#334155 !important; stroke:#334155 !important; }
+  #cfg-svg svg g.graph polygon { fill:#ffffff !important; stroke:none !important; }
+  #cfg-svg svg g.cluster rect { fill:transparent !important; stroke:#94a3b8 !important; stroke-width:1 !important; stroke-dasharray:5,3 !important; }
+  #cfg-svg svg g.cluster text { fill:#475569 !important; font-family:'JetBrains Mono',monospace !important; font-size:11px !important; }
   #cfg-svg svg { background: transparent !important; }
 
   /* Log entry colours */
   .log-remove  { color: #f87171; }
   .log-warn    { color: #fbbf24; }
-  .log-ml      { color: #a78bfa; }
-  .log-fold    { color: #38bdf8; }
+  .log-ml      { color: #8b5cf6; }
+  .log-fold    { color: #0ea5e9; }
   .log-error   { color: #ef4444; }
   .log-info    { color: #94a3b8; }
 
   /* Stage step */
-  .step-done   { color:#00ff88; }
+  .step-done   { color:#0f172a; }
   .step-active { color:#fbbf24; }
   .step-idle   { color:#4b5563; }
 
@@ -86,10 +86,10 @@
   .ring-fill  { color: #00ff88; transition: stroke-dashoffset 1s ease; }
 
   /* Drag-over highlight */
-  .drag-over { border-color: #00ff88 !important; background: rgba(0,255,136,.05); }
+  .drag-over { border-color: #00ff88 !important; background: rgba(0,0,0,.03); }
 
   /* Sidebar nav active */
-  .nav-active { background:rgba(0,255,136,.1); color:#00ff88; border-color:rgba(0,255,136,.25); }
+  .nav-active { background:rgba(0,0,0,.05); color:#0f172a; border-color:rgba(0,0,0,.1); }
   
   /* Animated progress bar */
   @keyframes progress-anim { 0%{background-position:0 0} 100%{background-position:40px 0} }
@@ -108,7 +108,7 @@
   #zoom-controls button { transition: background .15s; }
 </style>
 </head>
-<body class="bg-background-dark text-slate-100 h-screen flex flex-col overflow-hidden font-display">
+<body class="bg-white text-slate-900 h-screen flex flex-col overflow-hidden font-display">
 
 <!-- ═══════════════════════════════ TOP BAR ════════════════════════════════ -->
 <header class="flex items-center justify-between border-b border-border-col bg-surface px-4 py-2 shrink-0 z-20">
@@ -116,9 +116,16 @@
     <span class="material-symbols-outlined text-primary text-xl">account_tree</span>
     <h1 class="text-sm font-bold tracking-widest uppercase opacity-80 font-mono">IDCE</h1>
   </div>
+  <!-- Model info bar (populated from /api/model_info) -->
+  <div id="model-info-bar" class="hidden md:flex items-center gap-4 text-[10px] font-mono text-slate-500">
+    <span id="mib-version" class="px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">hybrid-v2</span>
+    <span>Trained: <span id="mib-trained" class="text-slate-700">—</span></span>
+    <span>Threshold: <span id="mib-threshold" class="text-slate-700">0.6</span></span>
+    <span id="mib-corrections-wrap" class="hidden">Corrections: <span id="mib-corrections" class="text-amber-600 font-bold">0</span> pending</span>
+  </div>
   <div class="flex items-center gap-3">
-    <span id="status-chip" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-500 border border-border-col transition-all">IDLE</span>
-    <span class="text-[10px] font-mono text-slate-600">v1.0.0</span>
+    <span id="status-chip" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-500 border border-border-col transition-all">IDLE</span>
+    <span class="text-[10px] font-mono text-slate-600">v2.0.0</span>
   </div>
 </header>
 
@@ -147,6 +154,9 @@
       </button>
       <button data-panel="model" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-transparent text-sm font-medium transition-all hover:bg-white/5 opacity-70 hover:opacity-100">
         <span class="material-symbols-outlined text-[18px]">memory</span> Model Info
+      </button>
+      <button data-panel="explainer" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-transparent text-sm font-medium transition-all hover:bg-white/5 opacity-70 hover:opacity-100">
+        <span class="material-symbols-outlined text-[18px]">psychology</span> DCE Explainer
       </button>
     </nav>
 
@@ -199,19 +209,63 @@
             </div>
             <input type="radio" name="mode" value="classical" class="accent-primary" checked/>
           </label>
+          <!-- ML Mode description -->
           <label id="mode-ml" class="mode-label flex items-center justify-between p-3 rounded-lg border border-border-col bg-surface-2 cursor-pointer transition-all hover:border-primary/30">
             <div>
               <p class="text-sm font-semibold">ML-Guided DCE</p>
-              <p class="text-[10px] text-slate-500 mt-0.5">GraphSAGE GNN inference</p>
+              <p class="text-[10px] text-slate-500 mt-0.5">SAGEConv + GATConv + MiniLM (v2)</p>
             </div>
             <input type="radio" name="mode" value="ml" class="accent-primary"/>
           </label>
         </div>
       </section>
 
+      <!-- ML System Status (always visible) -->
+      <section>
+        <p class="text-[10px] font-bold uppercase tracking-widest mb-2 text-slate-500">ML System</p>
+        <div class="rounded-lg border border-border-col bg-surface-2 p-3 space-y-3">
+
+          <!-- Model status badge -->
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] text-slate-600">Model</span>
+            <span id="sb-model-status" class="text-[10px] font-mono px-2 py-0.5 rounded border bg-slate-100 text-slate-500 border-slate-200">checking…</span>
+          </div>
+
+          <!-- Trained date -->
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] text-slate-600">Trained</span>
+            <span id="sb-trained" class="text-[10px] font-mono text-slate-700">—</span>
+          </div>
+
+          <!-- Confidence threshold slider -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[11px] text-slate-600">Confidence threshold</span>
+              <span id="sb-threshold-val" class="text-[10px] font-mono font-bold text-primary">0.60</span>
+            </div>
+            <input id="sb-threshold" type="range" min="0.5" max="0.95" step="0.05" value="0.6"
+              class="w-full h-1.5 accent-primary cursor-pointer"
+              oninput="document.getElementById('sb-threshold-val').textContent = parseFloat(this.value).toFixed(2)"/>
+            <p class="text-[9px] text-slate-400 mt-1">Below this → deferred to classical pass</p>
+          </div>
+
+          <!-- Pending corrections -->
+          <div id="sb-corrections-row" class="hidden flex items-center justify-between">
+            <span class="text-[11px] text-slate-600">Pending feedback</span>
+            <span id="sb-corrections" class="text-[10px] font-mono font-bold text-amber-600">0</span>
+          </div>
+
+          <!-- Retrain hint -->
+          <div id="sb-retrain-hint" class="hidden text-[9px] text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+            <span class="material-symbols-outlined text-[12px] align-middle">info</span>
+            Run <code>python3 ml/feedback.py</code> to fine-tune with pending corrections.
+          </div>
+        </div>
+      </section>
+
       <!-- Run button -->
       <button id="run-btn" onclick="startAnalysis()"
-        class="w-full py-3 rounded-lg bg-primary text-background-dark font-bold text-sm glow flex items-center justify-center gap-2 hover:brightness-110 active:scale-[.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+        class="w-full py-3 rounded-lg bg-primary text-white font-bold text-sm glow flex items-center justify-center gap-2 hover:brightness-110 active:scale-[.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed">
         <span class="material-symbols-outlined text-lg">play_arrow</span>
         RUN ANALYSIS
       </button>
@@ -228,7 +282,7 @@
   </aside>
 
   <!-- ─── MAIN CONTENT ──────────────────────────────────────────────────── -->
-  <main class="flex-1 flex flex-col bg-background-dark overflow-hidden">
+  <main class="flex-1 flex flex-col bg-white overflow-hidden">
 
     <!-- Pipeline stages bar -->
     <div class="px-5 py-3 border-b border-border-col bg-surface/60 shrink-0">
@@ -262,9 +316,9 @@
     <div class="flex-1 overflow-hidden relative">
 
       <!-- ======  DASHBOARD PANEL  ====== -->
-      <div id="panel-dashboard" class="panel absolute inset-0 flex items-center justify-center p-8">
-        <div class="dot-grid absolute inset-0 pointer-events-none"></div>
-        <div id="empty-state" class="relative text-center flex flex-col items-center gap-6 fade-up max-w-md">
+      <div id="panel-dashboard" class="panel absolute inset-0 overflow-y-auto scr p-8">
+        <div class="dot-grid pointer-events-none sticky top-0 h-0 w-full"></div>
+        <div id="empty-state" class="relative text-center flex flex-col items-center gap-6 fade-up max-w-md mx-auto min-h-full justify-center py-16">
           <div class="size-24 rounded-full border-2 border-primary/30 bg-primary/5 flex items-center justify-center glow">
             <span class="material-symbols-outlined text-primary text-5xl">account_tree</span>
           </div>
@@ -283,7 +337,7 @@
           </div>
         </div>
         <!-- Stats (shown after analysis) -->
-        <div id="stats-panel" class="hidden relative w-full max-w-3xl fade-up">
+        <div id="stats-panel" class="hidden relative w-full max-w-3xl mx-auto fade-up pb-8">
           <h2 class="text-lg font-bold mb-4">Analysis Complete</h2>
           <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
             <div class="p-4 rounded-xl bg-surface border border-border-col">
@@ -303,6 +357,25 @@
               <p id="stat-removed" class="text-3xl font-mono text-red-400">—</p>
             </div>
           </div>
+          <!-- ML Results Panel (shown after ML-guided analysis) -->
+          <div id="ml-results-panel" class="hidden mt-4">
+            <!-- Confidence summary bar -->
+            <div class="p-4 rounded-xl bg-surface border border-border-col mb-3">
+              <div class="flex items-center justify-between mb-3">
+                <p class="text-xs font-bold uppercase tracking-widest text-slate-500">🧠 GNN Dead Code Detections</p>
+                <span id="ml-model-badge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-violet-100 text-violet-700 border border-violet-200">hybrid-v2</span>
+              </div>
+              <div id="ml-dead-list" class="space-y-2 max-h-64 overflow-y-auto scr">
+                <p class="text-xs text-slate-500 italic">No ML items.</p>
+              </div>
+            </div>
+            <!-- Uncertainty / deferred nodes -->
+            <div id="ml-uncertain-panel" class="hidden p-4 rounded-xl bg-amber-50 border border-amber-200">
+              <p class="text-xs font-bold uppercase tracking-widest text-amber-700 mb-2">⚠️ Uncertain Nodes (Deferred)</p>
+              <p class="text-[11px] text-amber-800 mb-2">Model confidence between 0.50–0.60. Not removed. Force classical pass or review manually.</p>
+              <div id="ml-uncertain-list" class="font-mono text-[11px] text-amber-700 space-y-0.5"></div>
+            </div>
+          </div>
           <!-- Summary text -->
           <div class="p-4 rounded-xl bg-surface border border-border-col">
             <div class="flex items-center justify-between mb-2">
@@ -311,18 +384,18 @@
                 <span class="material-symbols-outlined text-sm">download</span> summary.txt
               </button>
             </div>
-            <pre id="summary-text" class="font-mono text-[11px] text-slate-400 leading-relaxed overflow-x-auto scr whitespace-pre-wrap max-h-48 scr overflow-y-auto"></pre>
+            <pre id="summary-text" class="font-mono text-[11px] text-slate-600 leading-relaxed overflow-x-auto scr whitespace-pre-wrap max-h-48 scr overflow-y-auto"></pre>
           </div>
           
           <!-- Executable Output (Only for C++) -->
           <div id="executable-panel" class="hidden mt-6 p-4 rounded-xl bg-surface border border-border-col">
             <div class="flex items-center justify-between mb-2">
               <p class="text-xs font-bold uppercase tracking-widest text-primary">Compiler Output Verification</p>
-              <button id="run-exec-btn" onclick="runOptimizedExecutable()" class="px-3 py-1 rounded bg-primary text-background-dark font-bold text-xs hover:brightness-110 flex items-center gap-1">
+              <button id="run-exec-btn" onclick="runOptimizedExecutable()" class="px-3 py-1 rounded bg-primary text-white font-bold text-xs hover:brightness-110 flex items-center gap-1">
                 <span class="material-symbols-outlined text-sm">terminal</span> TEST COMPILED BINARY
               </button>
             </div>
-            <pre id="executable-output" class="font-mono text-[11px] text-slate-300 leading-relaxed overflow-x-auto scr whitespace-pre-wrap min-h-16 scr overflow-y-auto bg-background-dark p-3 rounded border border-border-col">Click "Test Compiled Binary" to execute.</pre>
+            <pre id="executable-output" class="font-mono text-[11px] text-slate-700 leading-relaxed overflow-x-auto scr whitespace-pre-wrap min-h-16 scr overflow-y-auto bg-white p-3 rounded border border-border-col">Click "Test Compiled Binary" to execute.</pre>
           </div>
         </div>
       </div>
@@ -333,7 +406,7 @@
             <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Interactive SSA Editor</span>
             <button onclick="useEditorCode()" class="px-3 py-1 rounded bg-primary/20 text-primary border border-primary/30 text-[10px] font-bold tracking-wide hover:bg-primary/30 transition-colors">USE THIS CODE</button>
           </div>
-          <textarea id="ssa-editor" class="flex-1 w-full p-4 bg-transparent resize-none border-none outline-none text-slate-300 font-mono text-sm leading-relaxed scr" spellcheck="false" placeholder="// Type your C++ code here...
+          <textarea id="ssa-editor" class="flex-1 w-full p-4 bg-transparent resize-none border-none outline-none text-slate-700 font-mono text-sm leading-relaxed scr" spellcheck="false" placeholder="// Type your C++ code here...
 // It will be automatically converted to SSA for analysis.">#include <iostream>
 
 int main() {
@@ -366,14 +439,14 @@ int main() {
                       <span>ORIGINAL SSA</span>
                       <span id="compare-orig-lines">0 lines</span>
                   </div>
-                  <pre id="compare-orig" class="flex-1 p-4 font-mono text-xs text-slate-400 overflow-auto scr w-full whitespace-pre wrap"><span class="italic text-slate-600">Run analysis to compare...</span></pre>
+                  <pre id="compare-orig" class="flex-1 p-4 font-mono text-xs text-slate-600 overflow-auto scr w-full whitespace-pre wrap"><span class="italic text-slate-600">Run analysis to compare...</span></pre>
               </div>
               <div class="flex-1 flex flex-col relative">
                   <div class="px-3 py-1.5 bg-primary/5 text-[10px] font-mono text-primary border-b border-border-col shrink-0 flex justify-between">
                       <span>OPTIMIZED SSA (Dead Code Removed)</span>
                       <span id="compare-opt-lines">0 lines</span>
                   </div>
-                  <pre id="compare-opt" class="flex-1 p-4 font-mono text-xs text-slate-200 overflow-auto scr w-full whitespace-pre wrap relative"><span class="italic text-slate-600">Run analysis to compare...</span></pre>
+                  <pre id="compare-opt" class="flex-1 p-4 font-mono text-xs text-slate-800 overflow-auto scr w-full whitespace-pre wrap relative"><span class="italic text-slate-600">Run analysis to compare...</span></pre>
               </div>
           </div>
       </div>
@@ -417,7 +490,7 @@ int main() {
       </div>
 
       <!-- ======  LOGS PANEL  ====== -->
-      <div id="panel-logs" class="panel hidden absolute inset-0 flex flex-col bg-black/60">
+      <div id="panel-logs" class="panel hidden absolute inset-0 flex flex-col bg-white">
         <div class="flex items-center justify-between px-4 py-2 border-b border-border-col bg-surface/80 shrink-0">
           <div class="flex items-center gap-3">
             <span class="material-symbols-outlined text-sm text-slate-500">terminal</span>
@@ -441,65 +514,152 @@ int main() {
       <!-- ======  MODEL INFO PANEL  ====== -->
       <div id="panel-model" class="panel hidden absolute inset-0 overflow-y-auto scr p-6">
         <div class="max-w-2xl mx-auto space-y-4 fade-up">
-          <h2 class="text-lg font-bold">GNN Model — DCENodeClassifier</h2>
-          <p class="text-slate-500 text-sm">A GraphSAGE-based node classifier trained to predict dead IR instructions from the Control Flow Graph structure.</p>
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-bold">GNN Model — HybridDCEModel v2</h2>
+            <button onclick="refreshModelInfo()" class="text-[10px] font-mono text-primary hover:underline flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm">refresh</span> Refresh
+            </button>
+          </div>
+          <p class="text-slate-500 text-sm">SAGEConv + GATConv + MiniLM-L6-v2 embeddings. 72-d node features, confidence scoring, and attention-based explainability.</p>
 
+          <!-- Live model status -->
           <div class="grid grid-cols-2 gap-3">
-            <InfoCard title="Architecture" value="2-Layer GraphSAGE" sub="hidden_dim = 32"/>
-            <InfoCard title="Task" value="Node Classification" sub="Binary: live vs dead"/>
-            <InfoCard title="Input Features" value="2-dimensional" sub="opcode_emb, side_effect_flag"/>
-            <InfoCard title="Output" value="Sigmoid logits" sub="threshold = 0.5"/>
-          </div>
-
-          <div class="p-4 rounded-xl bg-surface border border-border-col">
-            <p class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Architecture</p>
-            <div class="font-mono text-xs space-y-1 text-slate-300">
-              <div class="flex gap-3"><span class="text-primary">conv1</span><span>SAGEConv(2 → 32)</span></div>
-              <div class="ml-6 text-slate-600">→ ReLU → Dropout(0.2)</div>
-              <div class="flex gap-3"><span class="text-primary">conv2</span><span>SAGEConv(32 → 32)</span></div>
-              <div class="ml-6 text-slate-600">→ ReLU</div>
-              <div class="flex gap-3"><span class="text-primary">head</span><span>Linear(32 → 1)</span></div>
-              <div class="ml-6 text-slate-600">→ Sigmoid → Binary decision</div>
+            <div class="p-4 rounded-xl bg-surface border border-border-col">
+              <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Architecture</p>
+              <p class="text-sm font-mono text-primary">SAGEConv + GATConv</p>
+              <p class="text-[10px] text-slate-500">hidden=128, heads=4</p>
+            </div>
+            <div class="p-4 rounded-xl bg-surface border border-border-col">
+              <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Input Features</p>
+              <p class="text-sm font-mono text-primary">72-dimensional</p>
+              <p class="text-[10px] text-slate-500">64-d MiniLM + 8 structural</p>
+            </div>
+            <div class="p-4 rounded-xl bg-surface border border-border-col">
+              <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Confidence Threshold</p>
+              <p id="mi-threshold" class="text-sm font-mono text-primary">0.6</p>
+              <p class="text-[10px] text-slate-500">below = deferred to classical</p>
+            </div>
+            <div class="p-4 rounded-xl bg-surface border border-border-col">
+              <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Model Trained</p>
+              <p id="mi-trained" class="text-sm font-mono text-primary">—</p>
+              <p id="mi-trained-sub" class="text-[10px] text-slate-500">Loading…</p>
             </div>
           </div>
 
+          <!-- Architecture diagram -->
           <div class="p-4 rounded-xl bg-surface border border-border-col">
-            <p class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Training Config</p>
-            <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
-              <Row k="Epochs" v="40"/>
-              <Row k="Optimizer" v="Adam (lr=0.01)"/>
-              <Row k="Loss" v="BCEWithLogitsLoss"/>
-              <Row k="pos_weight" v="0.2 (protect live code)"/>
-              <Row k="Train/Test" v="80 / 20 split"/>
-              <Row k="Batch size" v="32 graphs"/>
+            <p class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Architecture Stack</p>
+            <div class="font-mono text-xs space-y-1 text-slate-700">
+              <div class="flex gap-3"><span class="text-violet-600">embed</span><span>MiniLM-L6-v2 (384-d) → Random Proj → 64-d</span></div>
+              <div class="ml-6 text-slate-600">+ 8 structural features → 72-d node input</div>
+              <div class="flex gap-3 mt-1"><span class="text-primary">sage</span><span>SAGEConv(72 → 128) → ReLU → Dropout(0.25)</span></div>
+              <div class="flex gap-3"><span class="text-primary">gat</span><span>GATConv(128 → 32, heads=4, concat=False)</span></div>
+              <div class="ml-6 text-slate-600">→ attention weights saved per edge (explainability)</div>
+              <div class="flex gap-3"><span class="text-primary">head</span><span>Linear(32 → 1) → Sigmoid → confidence [0,1]</span></div>
             </div>
           </div>
 
+          <!-- Feature description -->
+          <div class="p-4 rounded-xl bg-surface border border-border-col">
+            <p class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">8 Structural Features</p>
+            <div class="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs font-mono">
+              <div><span class="text-primary">[0]</span> opcode (0–5)</div>
+              <div><span class="text-primary">[1]</span> side_effect (0/1)</div>
+              <div><span class="text-primary">[2]</span> after_terminal (0/1)</div>
+              <div><span class="text-primary">[3]</span> use_count</div>
+              <div><span class="text-primary">[4]</span> post_dom_depth</div>
+              <div><span class="text-primary">[5]</span> is_phi (0/1)</div>
+              <div><span class="text-primary">[6]</span> loop_depth</div>
+              <div><span class="text-primary">[7]</span> is_branch_target (0/1)</div>
+            </div>
+          </div>
+
+          <!-- Edge types -->
+          <div class="p-4 rounded-xl bg-surface border border-border-col">
+            <p class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Graph Edge Types</p>
+            <div class="space-y-1.5 text-xs font-mono">
+              <div><span class="text-sky-600">CFG</span> — sequential within block</div>
+              <div><span class="text-green-600">DFG</span> — def→use dependency</div>
+              <div><span class="text-primary">CFG_BRANCH</span> — block-to-block control flow</div>
+              <div><span class="text-violet-600">PDG</span> — program dependence (side-effect control)</div>
+            </div>
+          </div>
+
+          <!-- Safety veto -->
           <div class="p-4 rounded-xl bg-surface border border-border-col">
             <p class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Safety Override</p>
-            <p class="text-sm text-slate-400 leading-relaxed">
-              Even if the GNN predicts a statement as <span class="text-red-400 font-mono">dead</span>, the
-              <code class="bg-black/40 px-1 rounded text-primary">hasSideEffect()</code> check in
-              <code class="bg-black/40 px-1 rounded text-slate-300">analysis.cpp</code> acts as a hard veto.
-              Calls to <code class="bg-black/40 px-1 rounded text-slate-300">printf</code>, <code class="bg-black/40 px-1 rounded text-slate-300">malloc</code>,
-              pointer-dereference assignments, and other side-effectful ops are <em class="text-yellow-400">never</em> removed by the ML pass.
+            <p class="text-sm text-slate-600 leading-relaxed">
+              Even if the GNN confidence ≥ threshold, the <code class="bg-slate-100 px-1 rounded text-primary">hasSideEffect()</code> check
+              in <code class="bg-slate-100 px-1 rounded">analysis.cpp</code> acts as a hard veto.
+              Nodes with <code class="bg-slate-100 px-1 rounded">side_effect=1</code> are <em class="text-amber-600">never</em> removed by the ML pass.
+              Nodes with confidence 0.50–0.60 are <em class="text-amber-600">deferred</em> (uncertainty zone).
             </p>
           </div>
 
+          <!-- Continuous learning -->
           <div class="p-4 rounded-xl bg-surface border border-border-col">
-            <p class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Model Weights</p>
-            <p class="font-mono text-xs text-slate-400">ml_data/dce_model.pt</p>
-            <p class="text-xs text-slate-600 mt-1">~100 synthetic CFG samples generated via fuzzer.py</p>
+            <p class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Continuous Learning</p>
+            <p class="text-sm text-slate-600 leading-relaxed mb-2">User feedback (👍/👎) is stored in <code class="bg-slate-100 px-1 rounded">ml_data/corrections.jsonl</code> and used to fine-tune the last 2 layers.</p>
+            <p class="font-mono text-[10px] text-slate-500">python3 ml/feedback.py --corrections ml_data/corrections.jsonl --model ml_data/dce_model.pt</p>
+            <div class="mt-3 flex items-center gap-3">
+              <span class="text-[11px] text-slate-600">Pending corrections:</span>
+              <span id="mi-corrections" class="font-bold text-amber-600 font-mono">—</span>
+            </div>
+          </div>
+
+          <!-- Model weights -->
+          <div class="p-4 rounded-xl bg-surface border border-border-col">
+            <p class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Model Weights</p>
+            <p class="font-mono text-xs text-slate-600">ml_data/dce_model.pt</p>
+            <p id="mi-model-exists" class="text-xs mt-1 text-slate-600">Status: checking…</p>
           </div>
         </div>
       </div>
-    </div>
 
+      <!-- ======  EXPLAINER PANEL  ====== -->
+      <div id="panel-explainer" class="panel hidden absolute inset-0 overflow-y-auto scr p-8">
+        <div class="max-w-4xl mx-auto space-y-8 fade-up">
+          
+          <div class="flex items-center gap-4">
+            <div class="size-14 rounded-2xl bg-primary/5 border border-primary/10 flex items-center justify-center">
+              <span class="material-symbols-outlined text-primary text-3xl">psychology</span>
+            </div>
+            <div>
+              <h2 class="text-2xl font-bold tracking-tight">DCE Explainer Sandbox</h2>
+              <p class="text-slate-500 text-sm">AI-powered semantic analysis of eliminated code segments.</p>
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-1 gap-6">
+            <!-- Explainer Output Card -->
+            <div class="min-h-[500px] flex flex-col p-8 rounded-2xl bg-surface border border-border-col relative transition-all">
+              <div id="explain-loading" class="hidden absolute inset-0 bg-surface/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center text-slate-500 rounded-2xl">
+                <span class="material-symbols-outlined text-5xl animate-spin mb-4 text-primary">progress_activity</span>
+                <p class="text-sm font-mono animate-pulse">Consulting semantic trace model...</p>
+              </div>
+              
+              <div id="explain-content" class="flex-1 flex flex-col">
+                <div class="flex-1 flex flex-col items-center justify-center text-center py-20 px-10">
+                  <div class="size-20 rounded-full bg-slate-50 flex items-center justify-center mb-6">
+                    <span class="material-symbols-outlined text-slate-300 text-4xl">find_in_page</span>
+                  </div>
+                  <h3 class="text-lg font-semibold text-slate-700 mb-2">No Statement Selected</h3>
+                  <p class="text-slate-500 text-sm max-w-sm mx-auto leading-relaxed">
+                    To generate a report, go to the <strong class="text-primary hover:underline cursor-pointer" onclick="document.querySelector('[data-panel=\'dashboard\']').click()">Dashboard</strong> after running an analysis and click the <span class="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold border border-primary/20 uppercase">Explain</span> button on any removed instruction.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
   </main>
 </div>
 
 <!-- ────────────────────────── FOOTER LOG BAR ────────────────────────────── -->
-<footer class="h-36 border-t border-border-col bg-black/60 flex flex-col shrink-0 font-mono">
+<footer class="h-36 border-t border-border-col bg-white flex flex-col shrink-0 font-mono">
   <div class="flex items-center justify-between px-4 py-1.5 bg-surface/80 border-b border-border-col shrink-0">
     <div class="flex items-center gap-3">
       <span class="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
@@ -603,21 +763,39 @@ async function loadSamples() {
     if (!samples.length) { cont.innerHTML = '<div class="text-slate-600">No samples found</div>'; return; }
     cont.innerHTML = samples.map(s => `
       <button data-name="${s.name}" class="sample-btn w-full flex items-center justify-between px-2 py-1.5 rounded border border-border-col bg-surface-2 hover:border-primary/40 transition-all text-left">
-        <span class="font-mono text-[11px] text-slate-300 truncate">${s.name}</span>
+        <span class="font-mono text-[11px] text-slate-700 truncate">${s.name}</span>
         <span class="text-[9px] text-slate-600 ml-1 shrink-0">${(s.size/1024).toFixed(1)}k</span>
       </button>
     `).join('');
     document.querySelectorAll('.sample-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        selectedSample = btn.dataset.name;
-        selectedFile = null;
-        editorCodeInUse = false;
-        fileInput.value = '';
-        document.getElementById('file-badge').classList.remove('hidden');
-        document.getElementById('source-icon').textContent = 'library_books';
-        document.getElementById('file-name').textContent = `Sample: ${selectedSample}`;
-        document.querySelectorAll('.sample-btn').forEach(b => b.classList.remove('bg-primary/10','text-primary','border-primary/30'));
-        btn.classList.add('bg-primary/10','text-primary','border-primary/30');
+      btn.addEventListener('click', async () => {
+        const sampleName = btn.dataset.name;
+        
+        try {
+          const textRes = await fetch(`/api/sample-text/${sampleName}`);
+          if (!textRes.ok) throw new Error('Failed to fetch sample text');
+          const codeText = await textRes.text();
+          
+          document.getElementById('ssa-editor').value = codeText;
+          selectedSample = sampleName;
+          selectedFile = null;
+          editorCodeInUse = true;
+          fileInput.value = '';
+          
+          document.getElementById('file-badge').classList.remove('hidden');
+          document.getElementById('source-icon').textContent = 'edit_document';
+          document.getElementById('file-name').textContent = `Editor: ${sampleName}`;
+          
+          document.querySelectorAll('.sample-btn').forEach(b => b.classList.remove('bg-primary/10','text-primary','border-primary/30'));
+          btn.classList.add('bg-primary/10','text-primary','border-primary/30');
+          
+          // Switch tab to editor to show code
+          document.querySelector('.nav-btn[data-panel="editor"]').click();
+          showToast(`Loaded ${sampleName} into Editor`);
+          
+        } catch (e) {
+          showToast('Failed to load sample code');
+        }
       });
     });
   } catch { document.getElementById('sample-list').innerHTML = '<div class="text-red-500">Failed to load</div>'; }
@@ -655,10 +833,61 @@ function setStage(n) {
   }
 }
 
-function setChip(text, color='text-slate-500 bg-slate-800 border-border-col') {
+function setChip(text, color='text-slate-500 bg-slate-100 border-border-col') {
   const chip = document.getElementById('status-chip');
   chip.textContent = text;
   chip.className = `text-[10px] font-mono px-2 py-0.5 rounded border transition-all ${color}`;
+}
+
+// ── AI Explainer ──────────────────────────────────────────────────────────
+async function explainDeadItem(nodeId, reason, confidence) {
+  // Extract node text from the original SSA based on ID
+  let codeText = "Statement";
+  if (currentOptSsa || currentSummary) {
+    const lines = (document.getElementById('compare-orig').innerText || '').split('\n');
+    const matchLine = lines.find(l => l.includes(`_${nodeId} =`) || l.includes(`id=${nodeId}`));
+    if (matchLine) codeText = matchLine.trim();
+  }
+
+  // Switch tab
+  document.querySelector('.nav-btn[data-panel="explainer"]').click();
+  
+  const loading = document.getElementById('explain-loading');
+  const contentOut = document.getElementById('explain-content');
+  
+  loading.classList.remove('hidden');
+  contentOut.innerHTML = '';
+  
+  try {
+    const res = await fetch('/api/explain', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code_text: `Node ${nodeId} (${reason})`, reason: reason, confidence: confidence })
+    });
+    const parsed = await res.json();
+    if (parsed.error) throw new Error(parsed.error);
+    
+    contentOut.innerHTML = `
+      <div class="mb-4">
+        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Target Statement</p>
+        <code class="block p-3 rounded bg-slate-100 border border-slate-200 text-slate-700 font-mono text-sm">${escHtml(codeText)}</code>
+      </div>
+      <div class="mb-4">
+        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Assigned Reason</p>
+        <span class="px-2 py-0.5 rounded bg-amber-50 border border-amber-200 text-amber-700 text-xs font-mono">${escHtml(reason)}</span>
+      </div>
+      <div>
+        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">AI Analysis</p>
+        <div class="p-4 rounded-lg bg-primary/5 border border-primary/20 text-slate-700 text-sm leading-relaxed">
+          ${escHtml(parsed.explanation).replace(/\n/g, '<br/>')}
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    contentOut.innerHTML = `<div class="text-red-500 bg-red-50 p-4 rounded border border-red-200">Failed: ${err.message}</div>`;
+  } finally {
+    loading.classList.add('hidden');
+  }
 }
 
 // ── Logging ────────────────────────────────────────────────────────────────
@@ -768,6 +997,174 @@ function downloadOptimized() {
     a.click();
 }
 
+// ── ML Results Rendering ────────────────────────────────────────────────────
+let currentRunId   = null;
+let currentMlPreds = null;
+
+function confidenceColor(conf) {
+  if (conf >= 0.9) return 'text-red-500';
+  if (conf >= 0.7) return 'text-orange-500';
+  return 'text-yellow-500';
+}
+
+function sourceIcon(src) {
+  if (src === 'gnn')       return '🧠';
+  if (src === 'heuristic') return '📐';
+  return '⚠️';
+}
+
+function renderMlResults(mlPreds, runId) {
+  if (!mlPreds) return;
+  currentMlPreds = mlPreds;
+  currentRunId   = runId;
+
+  // Show the ML panel
+  document.getElementById('ml-results-panel').classList.remove('hidden');
+  document.getElementById('ml-model-badge').textContent = mlPreds.model_version || 'hybrid-v2';
+
+  // Render dead items list
+  const list = document.getElementById('ml-dead-list');
+  if (!mlPreds.dead_items || !mlPreds.dead_items.length) {
+    list.innerHTML = '<p class="text-xs text-slate-500 italic">No dead items detected by ML pass.</p>';
+  } else {
+    list.innerHTML = mlPreds.dead_items.map((item, idx) => {
+      const conf      = (item.confidence ?? 1.0);
+      const confPct   = Math.round(conf * 100);
+      const confCls   = confidenceColor(conf);
+      const src       = item.source ?? 'gnn';
+      const icon      = sourceIcon(src);
+      const influencers = (item.top_influencers || []).join(', ');
+      return `
+        <div class="flex items-start gap-3 p-2 rounded-lg bg-white border border-border-col group" id="ml-item-${item.id}">
+          <div class="shrink-0 text-base">${icon}</div>
+          <div class="flex-1 min-w-0">
+            <p class="text-[11px] font-mono text-slate-800 truncate" title="ID ${item.id}">[${item.id}] ${escHtml(item.reason || '')}</p>
+            <div class="flex items-center gap-2 mt-1">
+              <div class="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden" style="max-width:80px">
+                <div class="h-full rounded-full bg-current transition-all ${confCls}" style="width:${confPct}%"></div>
+              </div>
+              <span class="text-[10px] font-mono ${confCls}">${confPct}%</span>
+              <span class="text-[9px] font-mono text-slate-400 uppercase">${src}</span>
+              ${influencers ? `<span class="text-[9px] text-slate-400">← ${influencers}</span>` : ''}
+            </div>
+          </div>
+          <!-- Feedback buttons -->
+          <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity items-center">
+            <button title="Explain why this was removed" onclick="explainDeadItem(${item.id}, \`${escHtml(item.reason || '')}\`, ${conf})" 
+              class="px-2 py-0.5 rounded border border-primary/20 text-[9px] font-bold uppercase tracking-wider text-primary hover:bg-primary/10 transition-colors mr-1">
+              <span class="material-symbols-outlined text-[12px] align-middle -mt-0.5">psychology</span> Explain
+            </button>
+            <button title="Confirm: this IS dead code" onclick="sendFeedback(${item.id}, true, event)"
+              class="p-1 rounded hover:bg-green-50 transition-colors text-slate-400 hover:text-green-600" id="fb-up-${item.id}">
+              <span class="material-symbols-outlined text-sm">thumb_up</span>
+            </button>
+            <button title="Reject: this is NOT dead code" onclick="sendFeedback(${item.id}, false, event)"
+              class="p-1 rounded hover:bg-red-50 transition-colors text-slate-400 hover:text-red-500" id="fb-down-${item.id}">
+              <span class="material-symbols-outlined text-sm">thumb_down</span>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Render uncertainty list
+  const uncertainIds = mlPreds.uncertainty_nodes || [];
+  if (uncertainIds.length > 0) {
+    document.getElementById('ml-uncertain-panel').classList.remove('hidden');
+    document.getElementById('ml-uncertain-list').innerHTML =
+      uncertainIds.map(id => `<div>Node <span class="text-amber-800 font-bold">${id}</span> — confidence 0.50–0.60</div>`).join('');
+  } else {
+    document.getElementById('ml-uncertain-panel').classList.add('hidden');
+  }
+}
+
+async function sendFeedback(nodeId, correct, event) {
+  event.stopPropagation();
+  const upBtn   = document.getElementById(`fb-up-${nodeId}`);
+  const downBtn = document.getElementById(`fb-down-${nodeId}`);
+  if (upBtn)   upBtn.disabled   = true;
+  if (downBtn) downBtn.disabled = true;
+
+  try {
+    const res = await fetch('/api/feedback', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: nodeId, correct, run_id: currentRunId || '' }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      // Visual confirmation
+      const btn = correct ? upBtn : downBtn;
+      if (btn) { btn.classList.add(correct ? 'text-green-600' : 'text-red-500'); }
+      // Update corrections counter in header bar
+      const mibCorr = document.getElementById('mib-corrections');
+      const mibWrap = document.getElementById('mib-corrections-wrap');
+      if (mibCorr && data.pending_corrections > 0) {
+        mibCorr.textContent = data.pending_corrections;
+        mibWrap.classList.remove('hidden');
+      }
+      showToast(correct ? '👍 Confirmed — logged as correct removal' : '👎 Rejected — logged as correction for retraining');
+    }
+  } catch (e) {
+    showToast('Feedback failed: ' + e.message);
+  }
+}
+
+async function refreshModelInfo() {
+  // Sidebar defaults (show immediately)
+  const sbStatus = document.getElementById('sb-model-status');
+  const sbTrained = document.getElementById('sb-trained');
+
+  try {
+    const res  = await fetch('/api/model_info');
+    const info = await res.json();
+
+    // ── Sidebar widget ──────────────────────────────────────────────────
+    if (info.model_exists) {
+      sbStatus.textContent = 'hybrid-v2 ✓';
+      sbStatus.className = 'text-[10px] font-mono px-2 py-0.5 rounded border bg-green-50 text-green-700 border-green-200';
+    } else {
+      sbStatus.textContent = 'not trained';
+      sbStatus.className = 'text-[10px] font-mono px-2 py-0.5 rounded border bg-red-50 text-red-600 border-red-200';
+    }
+    sbTrained.textContent = info.last_trained || '—';
+
+    if (info.pending_corrections > 0) {
+      document.getElementById('sb-corrections').textContent = info.pending_corrections;
+      document.getElementById('sb-corrections-row').classList.remove('hidden');
+      document.getElementById('sb-corrections-row').classList.add('flex');
+      document.getElementById('sb-retrain-hint').classList.remove('hidden');
+    }
+
+    // ── Header bar ──────────────────────────────────────────────────────
+    document.getElementById('model-info-bar').classList.remove('hidden');
+    document.getElementById('mib-trained').textContent   = info.last_trained   || '—';
+    document.getElementById('mib-threshold').textContent = info.confidence_threshold || '0.6';
+    if (info.pending_corrections > 0) {
+      document.getElementById('mib-corrections').textContent = info.pending_corrections;
+      document.getElementById('mib-corrections-wrap').classList.remove('hidden');
+    }
+
+    // ── Model info panel ────────────────────────────────────────────────
+    document.getElementById('mi-trained').textContent     = info.last_trained || '—';
+    document.getElementById('mi-trained-sub').textContent = info.model_exists ? 'Weights found' : 'Not trained yet — run ml/train.py';
+    document.getElementById('mi-threshold').textContent   = info.confidence_threshold || '0.6';
+    document.getElementById('mi-corrections').textContent = info.pending_corrections ?? '0';
+    document.getElementById('mi-model-exists').textContent = info.model_exists
+      ? '✓ ml_data/dce_model.pt found'
+      : '✗ Model not found — run: python3 ml/train.py';
+  } catch (e) {
+    // Endpoint not yet available (server not restarted) — show degraded state
+    sbStatus.textContent = 'server offline';
+    sbStatus.className = 'text-[10px] font-mono px-2 py-0.5 rounded border bg-slate-100 text-slate-400 border-slate-200';
+    console.warn('Model info fetch failed:', e);
+  }
+}
+
+// Fetch on load
+refreshModelInfo();
+
 // ── On analysis done ───────────────────────────────────────────────────────
 function onDone(data) {
   currentDot     = data.dot     || '';
@@ -775,6 +1172,7 @@ function onDone(data) {
   currentOptSsa  = data.optSsa  || '';
   const origSsa  = data.origSsa || '';
   const stats    = data.stats   || {};
+  const mlPreds  = data.mlPreds || null;
 
   // Update stats panel
   document.getElementById('empty-state').classList.add('hidden');
@@ -828,20 +1226,30 @@ function onDone(data) {
 
   for (let i = 0; i < 4; i++) {
     const el = document.getElementById(`step-${i}`);
+    if (!el) continue;
     el.className = el.className.replace(/step-\w+/, 'step-done');
-    el.querySelector('.material-symbols-outlined').textContent = 'check_circle';
+    const icon = el.querySelector('.material-symbols-outlined');
+    if (icon) icon.textContent = 'check_circle';
   }
 
   setChip('DONE', 'text-primary bg-primary/10 border-primary/30');
   document.getElementById('run-btn').disabled = false;
 
-  // CFG badge
+  // Update CFG badge
   const mode = document.querySelector('input[name="mode"]:checked')?.value || 'classical';
   const badge = document.getElementById('cfg-mode-badge');
   badge.classList.remove('hidden');
   badge.textContent = mode === 'ml' ? 'ML-GUIDED' : 'CLASSICAL';
 
   if (currentDot) renderCFG(currentDot);
+
+  // Render ML results panel (only in ML mode)
+  if (mode === 'ml' && mlPreds) {
+    renderMlResults(mlPreds, currentRunId);
+    refreshModelInfo();
+  } else {
+    document.getElementById('ml-results-panel')?.classList.add('hidden');
+  }
 }
 
 // ── Main analysis runner ───────────────────────────────────────────────────
@@ -850,7 +1258,8 @@ async function startAnalysis() {
     showToast('⚠️ Please upload a file, select a sample, or use the editor code.'); return;
   }
 
-  const mode = document.querySelector('input[name="mode"]:checked')?.value || 'classical';
+  const mode      = document.querySelector('input[name="mode"]:checked')?.value || 'classical';
+  const threshold = parseFloat(document.getElementById('sb-threshold')?.value || '0.6');
   clearLogs();
   currentRemoved = 0;
   document.getElementById('run-btn').disabled = true;
@@ -872,31 +1281,35 @@ async function startAnalysis() {
       const res  = await fetch('/api/analyze-sample', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: selectedSample, mode }),
+        body: JSON.stringify({ name: selectedSample, mode, threshold }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      runId = data.runId;
+    runId = data.runId;
+    currentRunId = runId;
     } else if (editorCodeInUse) {
       // Use editor raw text
       const code = document.getElementById('ssa-editor').value;
       const res  = await fetch('/api/analyze-text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, mode }),
+        body: JSON.stringify({ code, mode, threshold }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      runId = data.runId;
+    runId = data.runId;
+    currentRunId = runId;
     } else {
       // Upload user file
       const form = new FormData();
       form.append('ssa', selectedFile);
       form.append('mode', mode);
+      form.append('threshold', threshold);
       const res  = await fetch('/api/analyze', { method: 'POST', body: form });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      runId = data.runId;
+    runId = data.runId;
+    currentRunId = runId;
     }
 
     // Open WS for live logs
