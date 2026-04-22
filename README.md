@@ -50,29 +50,85 @@ IDCE/
 
 ---
 
-## Prerequisites
+## Installation & Setup
 
-### Compiler (C++)
-- `g++` with C++17 support
-- `flex` and `bison`
+Choose your operating system to install the required system dependencies (C++ compiler, Flex, Bison, and Graphviz).
+
+### 1. System Dependencies
+
+<details>
+<summary><b>Linux (Ubuntu/Debian)</b></summary>
 
 ```bash
-sudo apt install g++ flex bison
+sudo apt update
+sudo apt install -y g++ flex bison graphviz nodejs npm python3-pip python3-venv
 ```
+</details>
 
-### ML Pipeline (Python)
-- Python 3.12+
-- PyTorch + PyTorch Geometric
+<details>
+<summary><b>Linux (Fedora)</b></summary>
+
+```bash
+sudo dnf install gcc-c++ flex bison graphviz nodejs python3-pip
+```
+</details>
+
+<details>
+<summary><b>Linux (Arch)</b></summary>
+
+```bash
+sudo pacman -S gcc flex bison graphviz nodejs npm python-pip
+```
+</details>
+
+<details>
+<summary><b>macOS (Homebrew)</b></summary>
+
+```bash
+brew install gcc flex bison graphviz nodejs
+# Add Homebrew bison/flex to PATH (Apple's versions are too old)
+export PATH="/opt/homebrew/opt/bison/bin:/opt/homebrew/opt/flex/bin:$PATH"
+```
+</details>
+
+<details>
+<summary><b>Windows</b></summary>
+
+**Recommended: WSL2 (Windows Subsystem for Linux)**
+1. Install [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) with an Ubuntu distribution.
+2. Follow the **Ubuntu/Debian** instructions above within your WSL terminal.
+
+**Alternative: MSYS2 / MinGW**
+1. Install [MSYS2](https://www.msys2.org/).
+2. Run the MSYS2 UCRT64 terminal and install:
+   ```bash
+   pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-flex mingw-w64-x86_64-bison mingw-w64-x86_64-graphviz
+   ```
+</details>
+
+---
+
+### 2. ML Pipeline Setup (Python)
+
+Requires **Python 3.12+**.
 
 ```bash
 cd ml
 python3 -m venv .venv
+
+# Linux/macOS
 source .venv/bin/activate
-pip install torch torch_geometric
+# Windows (PowerShell)
+# .\.venv\Scripts\Activate.ps1
+
+pip install torch torch_geometric --index-url https://download.pytorch.org/whl/cpu
 ```
 
-### GUI (Node.js)
-- Node.js 18+
+---
+
+### 3. GUI Setup (Node.js)
+
+Requires **Node.js 18+**.
 
 ```bash
 cd gui
