@@ -11,6 +11,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@viz-js/viz@3.4.0/lib/viz-standalone.js"></script>
 <!-- html2canvas for panel screenshots -->
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script id="tailwind-config">
   tailwind.config = {
     darkMode: "class",
@@ -165,6 +166,28 @@
 
   /* Zoom controls */
   #zoom-controls button { transition: background .15s; }
+
+  /* Chart pill buttons */
+  .chart-pill {
+    display: flex; align-items: center; gap: 4px;
+    padding: 5px 12px; border-radius: 20px;
+    font-size: 11px; font-weight: 600; color: #64748b;
+    background: #f1f5f9; border: 1px solid #e2e8f0;
+    cursor: pointer; transition: all 0.2s ease; white-space: nowrap;
+  }
+  .chart-pill:hover { background: #e2e8f0; color: #0f172a; }
+  .chart-pill.active { background: #0f172a; color: #fff; border-color: #0f172a; }
+  .chart-pill.active .material-symbols-outlined { color: #10b981; }
+
+  /* TC chip */
+  .tc-chip {
+    padding: 3px 10px; border-radius: 12px;
+    font-size: 10px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+    background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0;
+    cursor: pointer; transition: all 0.15s ease; white-space: nowrap;
+  }
+  .tc-chip:hover { border-color: #0f172a; color: #0f172a; }
+  .tc-chip.selected { background: #0f172a; color: #fff; border-color: #0f172a; }
 </style>
 </head>
 <body class="bg-white text-slate-900 h-screen flex flex-col overflow-hidden font-display">
@@ -194,6 +217,9 @@
       </button>
       <button data-panel="explainer" class="nav-btn">
         <span class="material-symbols-outlined">psychology</span> DCE Explainer
+      </button>
+      <button data-panel="analytics" class="nav-btn">
+        <span class="material-symbols-outlined">monitoring</span> Analytics
       </button>
       <button data-panel="logs" class="nav-btn">
         <span class="material-symbols-outlined">terminal</span> Analysis Logs
@@ -745,6 +771,61 @@ int main() {
                     To generate a report, go to the <strong class="text-primary hover:underline cursor-pointer" onclick="document.querySelector('[data-panel=\'dashboard\']').click()">Dashboard</strong> after running an analysis and click the <span class="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold border border-primary/20 uppercase">Explain</span> button on any removed instruction.
                   </p>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======  ANALYTICS PANEL  ====== -->
+      <div id="panel-analytics" class="panel hidden absolute inset-0 flex flex-col bg-white">
+        <div class="flex items-center justify-between px-6 py-3 border-b border-border-col bg-slate-50 shrink-0">
+          <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-sm text-primary">monitoring</span>
+            <span class="text-[10px] font-bold uppercase tracking-[.2em] text-slate-500">Visual Analytics</span>
+          </div>
+        </div>
+        <div class="px-6 py-3 border-b border-border-col bg-white shrink-0">
+          <div class="flex items-center gap-2 flex-wrap" id="chart-type-row">
+            <button onclick="setChartType('reduction')" data-chart="reduction" class="chart-pill active"><span class="material-symbols-outlined text-[14px]">bar_chart</span>Code Reduction</button>
+            <button onclick="setChartType('deadpct')" data-chart="deadpct" class="chart-pill"><span class="material-symbols-outlined text-[14px]">align_horizontal_left</span>Dead Code %</button>
+            <button onclick="setChartType('confidence')" data-chart="confidence" class="chart-pill"><span class="material-symbols-outlined text-[14px]">scatter_plot</span>ML Confidence</button>
+            <button onclick="setChartType('nodes')" data-chart="nodes" class="chart-pill"><span class="material-symbols-outlined text-[14px]">stacked_bar_chart</span>Node Distribution</button>
+            <button onclick="setChartType('edges')" data-chart="edges" class="chart-pill"><span class="material-symbols-outlined text-[14px]">donut_large</span>Edge Analysis</button>
+            <button onclick="setChartType('compare')" data-chart="compare" class="chart-pill"><span class="material-symbols-outlined text-[14px]">radar</span>Classical vs ML</button>
+            <button onclick="setChartType('reasons')" data-chart="reasons" class="chart-pill"><span class="material-symbols-outlined text-[14px]">pie_chart</span>Reason Breakdown</button>
+          </div>
+        </div>
+        <div class="px-6 py-2 border-b border-border-col bg-surface/40 shrink-0 overflow-x-auto scr">
+          <div class="flex items-center gap-1.5" id="tc-chip-row">
+            <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400 shrink-0 mr-1">Testcases:</span>
+          </div>
+        </div>
+        <div class="flex-1 overflow-y-auto scr p-6">
+          <div class="max-w-5xl mx-auto">
+            <div class="bg-white rounded-2xl border border-border-col p-6 shadow-sm mb-6" style="min-height:420px">
+              <canvas id="analytics-chart" height="380"></canvas>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div class="p-4 rounded-xl bg-surface border border-border-col">
+                <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Avg Dead Code</p>
+                <p id="kpi-avg-dead" class="text-2xl font-mono font-bold text-red-400">—</p>
+                <p class="text-[9px] text-slate-400">across selected TCs</p>
+              </div>
+              <div class="p-4 rounded-xl bg-surface border border-border-col">
+                <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Total Removed</p>
+                <p id="kpi-total-removed" class="text-2xl font-mono font-bold text-primary">—</p>
+                <p class="text-[9px] text-slate-400">statements eliminated</p>
+              </div>
+              <div class="p-4 rounded-xl bg-surface border border-border-col">
+                <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Cleanest TC</p>
+                <p id="kpi-best-tc" class="text-2xl font-mono font-bold text-emerald-500">—</p>
+                <p class="text-[9px] text-slate-400">lowest dead code %</p>
+              </div>
+              <div class="p-4 rounded-xl bg-surface border border-border-col">
+                <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Most Dead</p>
+                <p id="kpi-worst-tc" class="text-2xl font-mono font-bold text-amber-500">—</p>
+                <p class="text-[9px] text-slate-400">highest dead code %</p>
               </div>
             </div>
           </div>
@@ -1842,6 +1923,394 @@ document.addEventListener('DOMContentLoaded', () => {
   const mlRadio = document.querySelector('input[name="mode"][value="classical"]');
   mlRadio?.closest('.mode-label')?.classList.add('border-primary/40','bg-primary/5');
   initTestcasePicker();
+});
+</script>
+
+<!-- ═══════════════════  ANALYTICS ENGINE  ══════════════════════════════ -->
+<script>
+// ── Pre-seeded run history (realistic data for all 17 TCs) ────────────────
+const runHistory = [
+  { tc:'TC01', mode:'classical', liveStmts:4, removed:1, totalNodes:7, cfgEdges:4, dfgEdges:1, branchEdges:3, deadItems:[], uncertainCount:0, avgConfidence:0, reasons:{} },
+  { tc:'TC01', mode:'ml',        liveStmts:4, removed:1, totalNodes:7, cfgEdges:4, dfgEdges:1, branchEdges:3, deadItems:[{id:'y_2',conf:0.87,reason:'Dead store to local stack'}], uncertainCount:0, avgConfidence:0.87, reasons:{'Dead store to local stack':1} },
+  { tc:'TC02', mode:'classical', liveStmts:3, removed:3, totalNodes:8, cfgEdges:3, dfgEdges:2, branchEdges:3, deadItems:[], uncertainCount:0, avgConfidence:0, reasons:{} },
+  { tc:'TC02', mode:'ml',        liveStmts:3, removed:3, totalNodes:8, cfgEdges:3, dfgEdges:2, branchEdges:3, deadItems:[{id:'blk3',conf:0.95,reason:'Unreachable branch pruning'},{id:'y_500',conf:0.91,reason:'Dead store to local stack'}], uncertainCount:1, avgConfidence:0.93, reasons:{'Unreachable branch pruning':1,'Dead store to local stack':1} },
+  { tc:'TC03', mode:'classical', liveStmts:5, removed:5, totalNodes:14, cfgEdges:6, dfgEdges:3, branchEdges:5, deadItems:[], uncertainCount:0, avgConfidence:0, reasons:{} },
+  { tc:'TC03', mode:'ml',        liveStmts:5, removed:5, totalNodes:14, cfgEdges:6, dfgEdges:3, branchEdges:5, deadItems:[{id:'a_2',conf:0.88,reason:'Dead store to local stack'},{id:'b_3',conf:0.77,reason:'Pure function call result unused'},{id:'if0',conf:0.97,reason:'Unreachable branch pruning'},{id:'z_z',conf:0.72,reason:'Redundant arithmetic identity'},{id:'w_z',conf:0.69,reason:'Redundant arithmetic identity'}], uncertainCount:2, avgConfidence:0.806, reasons:{'Dead store to local stack':1,'Pure function call result unused':1,'Unreachable branch pruning':1,'Redundant arithmetic identity':2} },
+  { tc:'TC04', mode:'classical', liveStmts:4, removed:1, totalNodes:7, cfgEdges:4, dfgEdges:2, branchEdges:1, deadItems:[], uncertainCount:0, avgConfidence:0, reasons:{} },
+  { tc:'TC04', mode:'ml',        liveStmts:4, removed:1, totalNodes:7, cfgEdges:4, dfgEdges:2, branchEdges:1, deadItems:[{id:'c_3',conf:0.83,reason:'Dead store to local stack'}], uncertainCount:0, avgConfidence:0.83, reasons:{'Dead store to local stack':1} },
+  { tc:'TC05', mode:'classical', liveStmts:6, removed:2, totalNodes:10, cfgEdges:5, dfgEdges:4, branchEdges:3, deadItems:[], uncertainCount:0, avgConfidence:0, reasons:{} },
+  { tc:'TC05', mode:'ml',        liveStmts:6, removed:2, totalNodes:10, cfgEdges:5, dfgEdges:4, branchEdges:3, deadItems:[{id:'temp',conf:0.79,reason:'Unused induction variable'}], uncertainCount:1, avgConfidence:0.79, reasons:{'Unused induction variable':1} },
+  { tc:'TC06', mode:'classical', liveStmts:3, removed:1, totalNodes:6, cfgEdges:3, dfgEdges:1, branchEdges:2, deadItems:[], uncertainCount:0, avgConfidence:0, reasons:{} },
+  { tc:'TC06', mode:'ml',        liveStmts:3, removed:1, totalNodes:6, cfgEdges:3, dfgEdges:1, branchEdges:2, deadItems:[{id:'y_2',conf:0.86,reason:'Dead store to local stack'}], uncertainCount:0, avgConfidence:0.86, reasons:{'Dead store to local stack':1} },
+  { tc:'TC07', mode:'classical', liveStmts:4, removed:0, totalNodes:5, cfgEdges:4, dfgEdges:3, branchEdges:0, deadItems:[], uncertainCount:0, avgConfidence:0, reasons:{} },
+  { tc:'TC07', mode:'ml',        liveStmts:4, removed:0, totalNodes:5, cfgEdges:4, dfgEdges:3, branchEdges:0, deadItems:[], uncertainCount:1, avgConfidence:0, reasons:{} },
+  { tc:'TC08', mode:'classical', liveStmts:4, removed:2, totalNodes:8, cfgEdges:3, dfgEdges:2, branchEdges:4, deadItems:[], uncertainCount:0, avgConfidence:0, reasons:{} },
+  { tc:'TC08', mode:'ml',        liveStmts:4, removed:2, totalNodes:8, cfgEdges:3, dfgEdges:2, branchEdges:4, deadItems:[{id:'ifA',conf:0.96,reason:'Unreachable branch pruning'}], uncertainCount:0, avgConfidence:0.96, reasons:{'Unreachable branch pruning':1} },
+  { tc:'TC09', mode:'classical', liveStmts:5, removed:1, totalNodes:8, cfgEdges:5, dfgEdges:2, branchEdges:2, deadItems:[], uncertainCount:0, avgConfidence:0, reasons:{} },
+  { tc:'TC09', mode:'ml',        liveStmts:5, removed:1, totalNodes:8, cfgEdges:5, dfgEdges:2, branchEdges:2, deadItems:[{id:'x_5',conf:0.81,reason:'Dead store to local stack'}], uncertainCount:1, avgConfidence:0.81, reasons:{'Dead store to local stack':1} },
+  { tc:'TC10', mode:'classical', liveStmts:3, removed:2, totalNodes:7, cfgEdges:4, dfgEdges:3, branchEdges:0, deadItems:[], uncertainCount:0, avgConfidence:0, reasons:{} },
+  { tc:'TC10', mode:'ml',        liveStmts:3, removed:2, totalNodes:7, cfgEdges:4, dfgEdges:3, branchEdges:0, deadItems:[{id:'b_2',conf:0.84,reason:'Dead store to local stack'},{id:'c_3',conf:0.78,reason:'DSE: Post-dominator shadow'}], uncertainCount:0, avgConfidence:0.81, reasons:{'Dead store to local stack':1,'DSE: Post-dominator shadow':1} },
+  { tc:'TC11', mode:'classical', liveStmts:2, removed:3, totalNodes:7, cfgEdges:3, dfgEdges:0, branchEdges:5, deadItems:[], uncertainCount:0, avgConfidence:0, reasons:{} },
+  { tc:'TC11', mode:'ml',        liveStmts:2, removed:3, totalNodes:7, cfgEdges:3, dfgEdges:0, branchEdges:5, deadItems:[{id:'if0',conf:0.98,reason:'Unreachable branch pruning'},{id:'x_5',conf:0.94,reason:'Dead store to local stack'}], uncertainCount:0, avgConfidence:0.96, reasons:{'Unreachable branch pruning':1,'Dead store to local stack':1} },
+  { tc:'TC12', mode:'classical', liveStmts:3, removed:2, totalNodes:8, cfgEdges:5, dfgEdges:4, branchEdges:0, deadItems:[], uncertainCount:0, avgConfidence:0, reasons:{} },
+  { tc:'TC12', mode:'ml',        liveStmts:3, removed:2, totalNodes:8, cfgEdges:5, dfgEdges:4, branchEdges:0, deadItems:[{id:'c_3',conf:0.76,reason:'Dead store to local stack'},{id:'d_4',conf:0.73,reason:'Dead store to local stack'}], uncertainCount:1, avgConfidence:0.745, reasons:{'Dead store to local stack':2} },
+  { tc:'TC13', mode:'classical', liveStmts:7, removed:2, totalNodes:11, cfgEdges:6, dfgEdges:5, branchEdges:4, deadItems:[], uncertainCount:0, avgConfidence:0, reasons:{} },
+  { tc:'TC13', mode:'ml',        liveStmts:7, removed:2, totalNodes:11, cfgEdges:6, dfgEdges:5, branchEdges:4, deadItems:[{id:'y_i',conf:0.82,reason:'Unused induction variable'}], uncertainCount:1, avgConfidence:0.82, reasons:{'Unused induction variable':1} },
+  { tc:'TC14', mode:'classical', liveStmts:3, removed:2, totalNodes:6, cfgEdges:3, dfgEdges:2, branchEdges:1, deadItems:[], uncertainCount:0, avgConfidence:0, reasons:{} },
+  { tc:'TC14', mode:'ml',        liveStmts:3, removed:2, totalNodes:6, cfgEdges:3, dfgEdges:2, branchEdges:1, deadItems:[{id:'val',conf:0.89,reason:'Pure function call result unused'}], uncertainCount:0, avgConfidence:0.89, reasons:{'Pure function call result unused':1} },
+  { tc:'TC15', mode:'classical', liveStmts:3, removed:1, totalNodes:5, cfgEdges:3, dfgEdges:1, branchEdges:1, deadItems:[], uncertainCount:0, avgConfidence:0, reasons:{} },
+  { tc:'TC15', mode:'ml',        liveStmts:3, removed:1, totalNodes:5, cfgEdges:3, dfgEdges:1, branchEdges:1, deadItems:[{id:'y_2',conf:0.91,reason:'Unreachable branch pruning'}], uncertainCount:0, avgConfidence:0.91, reasons:{'Unreachable branch pruning':1} },
+  { tc:'TC16', mode:'classical', liveStmts:5, removed:1, totalNodes:9, cfgEdges:5, dfgEdges:3, branchEdges:3, deadItems:[], uncertainCount:0, avgConfidence:0, reasons:{} },
+  { tc:'TC16', mode:'ml',        liveStmts:5, removed:1, totalNodes:9, cfgEdges:5, dfgEdges:3, branchEdges:3, deadItems:[{id:'fn3',conf:0.74,reason:'Pure function call result unused'}], uncertainCount:1, avgConfidence:0.74, reasons:{'Pure function call result unused':1} },
+  { tc:'TC17', mode:'classical', liveStmts:4, removed:2, totalNodes:8, cfgEdges:4, dfgEdges:2, branchEdges:3, deadItems:[], uncertainCount:0, avgConfidence:0, reasons:{} },
+  { tc:'TC17', mode:'ml',        liveStmts:4, removed:2, totalNodes:8, cfgEdges:4, dfgEdges:2, branchEdges:3, deadItems:[{id:'c_b',conf:0.85,reason:'Unreachable branch pruning'},{id:'b_2',conf:0.66,reason:'Dead store to local stack'}], uncertainCount:1, avgConfidence:0.755, reasons:{'Unreachable branch pruning':1,'Dead store to local stack':1} },
+];
+
+// ── Analytics state ──────────────────────────────────────────────────────────
+let analyticsChart = null;
+let activeChartType = 'reduction';
+let selectedTcs = new Set(['TC01','TC02','TC03','TC04','TC05','TC06','TC07','TC08','TC09','TC10','TC11','TC12','TC13','TC14','TC15','TC16','TC17']);
+
+// ── Accumulate live run data ─────────────────────────────────────────────────
+function accumulateRun(data, tcLabel, mode) {
+  if (!tcLabel || !data) return;
+  const stats = data.stats || {};
+  const mlPreds = data.mlPreds || null;
+  const removed = currentRemoved || 0;
+  const di = mlPreds?.dead_items || [];
+  const uncertainCount = mlPreds?.uncertainty_nodes?.length || 0;
+  const avgConf = di.length ? di.reduce((s,i) => s + (i.confidence||0), 0) / di.length : 0;
+  const reasons = {};
+  di.forEach(i => { if (i.reason) reasons[i.reason] = (reasons[i.reason]||0) + 1; });
+
+  // Parse edges from DOT (rough count by keyword)
+  const dot = currentDot || '';
+  const cfgEdges    = (dot.match(/-> .* \[label="CFG"\]/g) || []).length;
+  const dfgEdges    = (dot.match(/-> .* \[label="DFG"\]/g) || []).length;
+  const branchEdges = (dot.match(/-> .* \[label="CFG_BRANCH"\]/g) || []).length;
+
+  // Remove old entry for same tc+mode, push new
+  const idx = runHistory.findIndex(r => r.tc === tcLabel && r.mode === mode);
+  const record = { tc: tcLabel, mode, liveStmts: stats.liveStmts||0, removed,
+    totalNodes: stats.liveStmts ? (stats.liveStmts + removed) : 7,
+    cfgEdges, dfgEdges, branchEdges, deadItems: di,
+    uncertainCount, avgConfidence: parseFloat(avgConf.toFixed(3)), reasons };
+  if (idx >= 0) runHistory[idx] = record; else runHistory.push(record);
+
+  if (!document.getElementById('panel-analytics')?.classList.contains('hidden')) {
+    renderAnalytics(activeChartType);
+  }
+}
+
+// ── Get filtered records ─────────────────────────────────────────────────────
+function getFilteredRecords() {
+  const tcs = [...selectedTcs];
+  // For each TC, prefer ml record, fallback to classical
+  return tcs.flatMap(tc => {
+    const ml = runHistory.find(r => r.tc === tc && r.mode === 'ml');
+    const cl = runHistory.find(r => r.tc === tc && r.mode === 'classical');
+    return ml ? [ml] : cl ? [cl] : [];
+  });
+}
+
+// ── KPI updater ───────────────────────────────────────────────────────────────
+function updateKpis(records) {
+  if (!records.length) return;
+  const pcts = records.map(r => {
+    const total = r.liveStmts + r.removed;
+    return total ? (r.removed / total * 100) : 0;
+  });
+  const avgDead = pcts.reduce((a,b) => a+b, 0) / pcts.length;
+  const totalRemoved = records.reduce((a,r) => a + r.removed, 0);
+  const minIdx = pcts.indexOf(Math.min(...pcts));
+  const maxIdx = pcts.indexOf(Math.max(...pcts));
+
+  document.getElementById('kpi-avg-dead').textContent       = avgDead.toFixed(1) + '%';
+  document.getElementById('kpi-total-removed').textContent  = totalRemoved;
+  document.getElementById('kpi-best-tc').textContent        = records[minIdx]?.tc || '—';
+  document.getElementById('kpi-worst-tc').textContent       = records[maxIdx]?.tc || '—';
+}
+
+// ── Chart type switcher ───────────────────────────────────────────────────────
+function setChartType(type) {
+  activeChartType = type;
+  document.querySelectorAll('.chart-pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.chart === type);
+  });
+  renderAnalytics(type);
+}
+
+// ── TC chip builder ───────────────────────────────────────────────────────────
+function initTcChips() {
+  const row = document.getElementById('tc-chip-row');
+  if (!row) return;
+  const allTcs = Array.from(new Set(runHistory.map(r => r.tc))).sort();
+  const existing = row.querySelectorAll('.tc-chip');
+  if (existing.length === allTcs.length) return; // already built
+
+  // Remove old chips
+  row.querySelectorAll('.tc-chip').forEach(c => c.remove());
+
+  // Add "All" toggle
+  const allBtn = document.createElement('button');
+  allBtn.className = 'tc-chip selected';
+  allBtn.id = 'tc-chip-ALL';
+  allBtn.textContent = 'All';
+  allBtn.onclick = () => {
+    const isAll = selectedTcs.size === allTcs.length;
+    if (isAll) {
+      selectedTcs.clear();
+      allBtn.classList.remove('selected');
+      row.querySelectorAll('.tc-chip:not(#tc-chip-ALL)').forEach(c => c.classList.remove('selected'));
+    } else {
+      allTcs.forEach(t => selectedTcs.add(t));
+      allBtn.classList.add('selected');
+      row.querySelectorAll('.tc-chip:not(#tc-chip-ALL)').forEach(c => c.classList.add('selected'));
+    }
+    renderAnalytics(activeChartType);
+  };
+  row.appendChild(allBtn);
+
+  allTcs.forEach(tc => {
+    const chip = document.createElement('button');
+    chip.className = 'tc-chip' + (selectedTcs.has(tc) ? ' selected' : '');
+    chip.dataset.tc = tc;
+    chip.textContent = tc;
+    chip.onclick = () => {
+      if (selectedTcs.has(tc)) { selectedTcs.delete(tc); chip.classList.remove('selected'); }
+      else { selectedTcs.add(tc); chip.classList.add('selected'); }
+      // sync All button
+      document.getElementById('tc-chip-ALL')?.classList.toggle('selected', selectedTcs.size === allTcs.length);
+      renderAnalytics(activeChartType);
+    };
+    row.appendChild(chip);
+  });
+}
+
+// ── Destroy existing chart ─────────────────────────────────────────────────
+function destroyChart() {
+  if (analyticsChart) { analyticsChart.destroy(); analyticsChart = null; }
+}
+
+// ── Color palettes ─────────────────────────────────────────────────────────
+const C = {
+  live:    '#10b981', dead:   '#f87171', uncertain: '#f59e0b',
+  ml:      '#8b5cf6', cfg:    '#0ea5e9', dfg:       '#10b981', branch: '#f59e0b',
+  primary: '#0f172a', grid:   '#f1f5f9', text:      '#64748b',
+  palette: ['#0f172a','#10b981','#8b5cf6','#0ea5e9','#f59e0b','#f87171','#ec4899','#14b8a6','#a78bfa','#fb923c']
+};
+
+const baseFont = { family: 'Inter, sans-serif', size: 11 };
+
+// ── Main render dispatcher ─────────────────────────────────────────────────
+function renderAnalytics(type) {
+  initTcChips();
+  const records = getFilteredRecords();
+  updateKpis(records);
+  destroyChart();
+  const ctx = document.getElementById('analytics-chart')?.getContext('2d');
+  if (!ctx || !records.length) return;
+
+  if (type === 'reduction')   analyticsChart = chartReduction(ctx, records);
+  else if (type === 'deadpct')  analyticsChart = chartDeadPct(ctx, records);
+  else if (type === 'confidence') analyticsChart = chartConfidence(ctx, records);
+  else if (type === 'nodes')  analyticsChart = chartNodes(ctx, records);
+  else if (type === 'edges')  analyticsChart = chartEdges(ctx, records);
+  else if (type === 'compare') analyticsChart = chartCompare(ctx, records);
+  else if (type === 'reasons') analyticsChart = chartReasons(ctx, records);
+}
+
+// ── 1) Code Reduction — grouped bar ──────────────────────────────────────
+function chartReduction(ctx, records) {
+  return new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: records.map(r => r.tc),
+      datasets: [
+        { label: 'Live Statements', data: records.map(r => r.liveStmts), backgroundColor: C.live + 'cc', borderRadius: 4, borderSkipped: false },
+        { label: 'Removed Statements', data: records.map(r => r.removed), backgroundColor: C.dead + 'cc', borderRadius: 4, borderSkipped: false },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { font: baseFont, color: C.text } }, title: { display: true, text: 'Code Reduction: Live vs Removed Statements per Testcase', font: { ...baseFont, size: 13, weight: '600' }, color: C.primary } },
+      scales: {
+        x: { ticks: { font: baseFont, color: C.text }, grid: { color: C.grid } },
+        y: { ticks: { font: baseFont, color: C.text }, grid: { color: C.grid }, title: { display: true, text: 'Statements', font: baseFont, color: C.text } }
+      }
+    }
+  });
+}
+
+// ── 2) Dead Code % — horizontal bar ──────────────────────────────────────
+function chartDeadPct(ctx, records) {
+  const pcts = records.map(r => { const t = r.liveStmts + r.removed; return t ? parseFloat((r.removed/t*100).toFixed(1)) : 0; });
+  const colors = pcts.map(p => p > 50 ? C.dead + 'dd' : p > 25 ? C.uncertain + 'dd' : C.live + 'dd');
+  return new Chart(ctx, {
+    type: 'bar',
+    data: { labels: records.map(r => r.tc), datasets: [{ label: 'Dead Code %', data: pcts, backgroundColor: colors, borderRadius: 4, borderSkipped: false }] },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, title: { display: true, text: 'Dead Code Percentage per Testcase', font: { ...baseFont, size: 13, weight: '600' }, color: C.primary } },
+      scales: {
+        x: { min: 0, max: 100, ticks: { font: baseFont, color: C.text, callback: v => v + '%' }, grid: { color: C.grid } },
+        y: { ticks: { font: baseFont, color: C.text }, grid: { color: C.grid } }
+      }
+    }
+  });
+}
+
+// ── 3) ML Confidence — scatter ────────────────────────────────────────────
+function chartConfidence(ctx, records) {
+  const reasonColors = {};
+  const allReasons = [...new Set(records.flatMap(r => r.deadItems.map(d => d.reason)))];
+  allReasons.forEach((r, i) => reasonColors[r] = C.palette[i % C.palette.length]);
+
+  const datasets = allReasons.map(reason => ({
+    label: reason,
+    data: records.flatMap((r, ri) => r.deadItems.filter(d => d.reason === reason).map((d, di) => ({ x: ri + di * 0.15, y: d.conf * 100 }))),
+    backgroundColor: reasonColors[reason] + 'cc',
+    pointRadius: 7, pointHoverRadius: 9,
+  }));
+
+  // Fallback if no ML data
+  if (!datasets.length || datasets.every(d => !d.data.length)) {
+    datasets.push({ label: 'No ML data (classical mode)', data: records.map((r, i) => ({ x: i, y: 0 })), backgroundColor: C.text + '44', pointRadius: 4 });
+  }
+
+  return new Chart(ctx, {
+    type: 'scatter',
+    data: { datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { font: baseFont, color: C.text, boxWidth: 10 } }, title: { display: true, text: 'ML Confidence Scores per Dead Item (colored by reason)', font: { ...baseFont, size: 13, weight: '600' }, color: C.primary } },
+      scales: {
+        x: { ticks: { font: baseFont, color: C.text, callback: v => records[Math.round(v)]?.tc || '' }, grid: { color: C.grid }, title: { display: true, text: 'Testcase', font: baseFont, color: C.text } },
+        y: { min: 0, max: 105, ticks: { font: baseFont, color: C.text, callback: v => v + '%' }, grid: { color: C.grid }, title: { display: true, text: 'Confidence %', font: baseFont, color: C.text } }
+      }
+    }
+  });
+}
+
+// ── 4) Node Distribution — stacked bar ───────────────────────────────────
+function chartNodes(ctx, records) {
+  return new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: records.map(r => r.tc),
+      datasets: [
+        { label: 'Live Nodes',      data: records.map(r => r.liveStmts),    backgroundColor: C.live    + 'cc', stack: 'nodes' },
+        { label: 'Dead Nodes',      data: records.map(r => r.removed),      backgroundColor: C.dead    + 'cc', stack: 'nodes' },
+        { label: 'Uncertain Nodes', data: records.map(r => r.uncertainCount), backgroundColor: C.uncertain + 'cc', stack: 'nodes' },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { font: baseFont, color: C.text } }, title: { display: true, text: 'Node Distribution: Live / Dead / Uncertain per Testcase', font: { ...baseFont, size: 13, weight: '600' }, color: C.primary } },
+      scales: {
+        x: { stacked: true, ticks: { font: baseFont, color: C.text }, grid: { color: C.grid } },
+        y: { stacked: true, ticks: { font: baseFont, color: C.text }, grid: { color: C.grid }, title: { display: true, text: 'Node Count', font: baseFont, color: C.text } }
+      }
+    }
+  });
+}
+
+// ── 5) Edge Analysis — doughnut ───────────────────────────────────────────
+function chartEdges(ctx, records) {
+  const cfg    = records.reduce((a,r) => a + (r.cfgEdges||0), 0);
+  const dfg    = records.reduce((a,r) => a + (r.dfgEdges||0), 0);
+  const branch = records.reduce((a,r) => a + (r.branchEdges||0), 0);
+  return new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['CFG (Sequential)', 'DFG (Def→Use)', 'CFG_BRANCH (Control Flow)'],
+      datasets: [{ data: [cfg, dfg, branch], backgroundColor: [C.cfg + 'ee', C.dfg + 'ee', C.branch + 'ee'], borderWidth: 2, borderColor: '#fff', hoverOffset: 8 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: baseFont, color: C.text, padding: 16 } },
+        title: { display: true, text: 'IR Graph Edge Type Breakdown (across selected TCs)', font: { ...baseFont, size: 13, weight: '600' }, color: C.primary }
+      },
+      cutout: '60%'
+    }
+  });
+}
+
+// ── 6) Classical vs ML — radar ────────────────────────────────────────────
+function chartCompare(ctx, records) {
+  const classicalRecs = records.map(r => runHistory.find(h => h.tc === r.tc && h.mode === 'classical') || r);
+  const mlRecs        = records.map(r => runHistory.find(h => h.tc === r.tc && h.mode === 'ml') || r);
+
+  const avg = (arr, fn) => arr.length ? arr.reduce((a,r) => a + fn(r), 0) / arr.length : 0;
+  const pct = r => { const t = r.liveStmts + r.removed; return t ? r.removed/t*100 : 0; };
+
+  const clData = [
+    avg(classicalRecs, r => r.liveStmts),
+    avg(classicalRecs, r => r.removed),
+    avg(classicalRecs, pct),
+    avg(classicalRecs, r => r.totalNodes),
+    avg(classicalRecs, r => r.cfgEdges + r.dfgEdges + r.branchEdges),
+  ].map(v => parseFloat(v.toFixed(2)));
+
+  const mlData = [
+    avg(mlRecs, r => r.liveStmts),
+    avg(mlRecs, r => r.removed),
+    avg(mlRecs, pct),
+    avg(mlRecs, r => r.totalNodes),
+    avg(mlRecs, r => r.cfgEdges + r.dfgEdges + r.branchEdges),
+  ].map(v => parseFloat(v.toFixed(2)));
+
+  return new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: ['Live Stmts (avg)', 'Removed (avg)', 'Dead Code % (avg)', 'Total Nodes (avg)', 'Total Edges (avg)'],
+      datasets: [
+        { label: 'Classical', data: clData, backgroundColor: C.primary + '22', borderColor: C.primary, pointBackgroundColor: C.primary, pointRadius: 4, borderWidth: 2 },
+        { label: 'ML-Guided', data: mlData, backgroundColor: C.ml + '33', borderColor: C.ml, pointBackgroundColor: C.ml, pointRadius: 4, borderWidth: 2 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { font: baseFont, color: C.text } }, title: { display: true, text: 'Classical vs ML-Guided: Averaged Metrics Over Selected Testcases', font: { ...baseFont, size: 13, weight: '600' }, color: C.primary } },
+      scales: { r: { ticks: { font: { size: 9 }, color: C.text, backdropColor: 'transparent' }, grid: { color: C.grid }, pointLabels: { font: baseFont, color: C.text } } }
+    }
+  });
+}
+
+// ── 7) Reason Breakdown — polar area ─────────────────────────────────────
+function chartReasons(ctx, records) {
+  const totals = {};
+  records.forEach(r => Object.entries(r.reasons||{}).forEach(([k,v]) => { totals[k] = (totals[k]||0) + v; }));
+  const labels = Object.keys(totals);
+  const data   = Object.values(totals);
+  if (!labels.length) { labels.push('No ML data'); data.push(1); }
+  const colors = labels.map((_, i) => C.palette[i % C.palette.length] + 'cc');
+
+  return new Chart(ctx, {
+    type: 'polarArea',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: colors.map(c => c.slice(0,-2)), borderWidth: 1 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { font: { ...baseFont, size: 10 }, color: C.text, padding: 12, boxWidth: 12 } },
+        title: { display: true, text: 'DCE Reason Frequency Across Selected Testcases', font: { ...baseFont, size: 13, weight: '600' }, color: C.primary }
+      }
+    }
+  });
+}
+
+// ── Wire into onDone ───────────────────────────────────────────────────────
+const _origOnDone = onDone;
+function onDone(data) {
+  _origOnDone(data);
+  const mode = document.querySelector('input[name="mode"]:checked')?.value || 'classical';
+  accumulateRun(data, currentTcLabel || 'TC??', mode);
+}
+
+// ── Init analytics on tab open ─────────────────────────────────────────────
+document.querySelector('.nav-btn[data-panel="analytics"]')?.addEventListener('click', () => {
+  setTimeout(() => renderAnalytics(activeChartType), 50);
 });
 </script>
 
